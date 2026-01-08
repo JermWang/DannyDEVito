@@ -164,7 +164,7 @@ export default function StakingPage() {
               url="http://dannydevito.fun/staking"
               onRefresh={refresh}
             >
-              <div className="p-4 font-sans text-sm text-black bg-white">
+              <div className="p-4 font-sans text-sm text-black bg-white max-w-3xl mx-auto">
               {/* Page header */}
               <div className="border-b-2 border-[#000080] pb-2 mb-4">
                 <h1 className="text-2xl font-bold text-[#000080] flex items-center gap-2">

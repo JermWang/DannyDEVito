@@ -134,7 +134,7 @@ export default function VaultPage() {
             onRefresh={refresh}
           >
             {/* Vault content - Orange/Gold theme */}
-            <div className="p-4 font-sans text-sm text-black bg-white">
+            <div className="p-4 font-sans text-sm text-black bg-white max-w-3xl mx-auto">
               {/* Page header */}
               <div className="border-b-2 border-[#D35400] pb-2 mb-4">
                 <div className="flex items-center justify-between">

@@ -141,7 +141,7 @@ export default function ChatLogsPage() {
               else loadSessions();
             }}
           >
-            <div className="p-4 font-sans text-sm text-black bg-white">
+            <div className="p-4 font-sans text-sm text-black bg-white max-w-3xl mx-auto">
               <div className="border-b-2 border-[#000080] pb-2 mb-4">
                 <h1 className="text-2xl font-bold text-[#000080] flex items-center gap-2">
                   <img src="/DEVito.png" alt="" className="h-8" />
