@@ -9,10 +9,10 @@ const COOLDOWN_SECONDS = 48 * 60 * 60; // 48 hours
  * Longer stake = higher multiplier for allocations
  * 
  * Base: 1.0x
- * 7 days: 1.25x
- * 30 days: 1.5x
- * 90 days: 2.0x
- * 180 days: 2.5x
+ * 3 days: 1.25x
+ * 7 days: 1.5x
+ * 10 days: 1.75x
+ * 14 days: 2.0x (max)
  */
 export function calculateMultiplier(stakedAt) {
   if (!stakedAt) return 1.0;
@@ -21,10 +21,10 @@ export function calculateMultiplier(stakedAt) {
   const stakedTime = new Date(stakedAt).getTime();
   const daysStaked = (now - stakedTime) / (1000 * 60 * 60 * 24);
   
-  if (daysStaked >= 180) return 2.5;
-  if (daysStaked >= 90) return 2.0;
-  if (daysStaked >= 30) return 1.5;
-  if (daysStaked >= 7) return 1.25;
+  if (daysStaked >= 14) return 2.0;
+  if (daysStaked >= 10) return 1.75;
+  if (daysStaked >= 7) return 1.5;
+  if (daysStaked >= 3) return 1.25;
   return 1.0;
 }
 

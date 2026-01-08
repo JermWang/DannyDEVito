@@ -13,9 +13,14 @@ function calculateMultiplier(stakedAt) {
   if (!stakedAt) return 1.0;
   const now = Date.now();
   const stakedTime = new Date(stakedAt).getTime();
-  const daysSinceStake = (now - stakedTime) / (1000 * 60 * 60 * 24);
-  const multiplier = 1.0 + Math.min(daysSinceStake / 30, 1.0);
-  return Math.round(multiplier * 100) / 100;
+  const daysStaked = (now - stakedTime) / (1000 * 60 * 60 * 24);
+  
+  // 14-day max multiplier tiers
+  if (daysStaked >= 14) return 2.0;
+  if (daysStaked >= 10) return 1.75;
+  if (daysStaked >= 7) return 1.5;
+  if (daysStaked >= 3) return 1.25;
+  return 1.0;
 }
 
 export async function POST(req) {
