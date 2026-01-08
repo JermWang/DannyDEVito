@@ -403,24 +403,6 @@ export default function StakingPage() {
                 </div>
               </div>
 
-              {/* Escrow wallet info */}
-              {hasEscrow && (
-                <div className="border-2 border-[#808080] mb-4">
-                  <div className="bg-[#000080] text-white px-3 py-1 font-bold text-sm">
-                    Your Escrow Wallet (Privy Custody)
-                  </div>
-                  <div className="bg-[#E8E8FF] p-3 text-xs text-black">
-                    <p className="mb-2">Send <strong>$DEVITO</strong> to this address to deposit into the pit:</p>
-                    <div className="bg-white border border-[#808080] p-2 font-mono text-[10px] break-all select-all">
-                      {summary?.escrowWallet || escrowWallet}
-                    </div>
-                    <p className="mt-2 text-gray-600">
-                      After sending, click "Confirm Deposit" below with the amount you sent.
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {/* Stats table */}
               <table className="w-full border-collapse mb-4">
                 <tbody>
@@ -482,106 +464,191 @@ export default function StakingPage() {
                 </div>
               )}
 
-              {/* Actions */}
+              {/* SIMPLE STAKING FLOW */}
               <div className="border-2 border-[#808080] mb-4">
-                <div className="bg-[#000080] text-white px-3 py-1 font-bold text-sm">
-                  Do Something
+                <div className="bg-[#008000] text-white px-3 py-2 font-bold text-sm">
+                  🚀 Start Staking in 2 Easy Steps
                 </div>
-                <div className="bg-white p-3">
-                  {/* Step 1: Initialize escrow wallet if not done */}
-                  {!hasEscrow && canQuery && (
-                    <div className="mb-4 p-3 bg-[#FFFFCC] border border-[#808080]">
-                      <p className="text-sm mb-2"><strong>Step 1:</strong> Set up your escrow wallet to start staking</p>
-                      <button
-                        type="button"
-                        onClick={initEscrow}
-                        disabled={busy}
-                        className="px-6 py-2 bg-[#000080] text-white font-bold disabled:opacity-50 hover:bg-[#000060]"
-                      >
-                        {busy ? "Creating..." : "CREATE ESCROW WALLET"}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Step 2: Deposit/Withdraw/Claim actions */}
-                  <div className="flex flex-wrap gap-3 items-end">
-                    <div>
-                      <label className="text-xs text-gray-600 block mb-1">Amount ($DEVITO)</label>
-                      <input
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="100"
-                        type="number"
-                        className="w-32 px-2 py-1 border-2 border-[#808080] font-mono"
-                      />
-                    </div>
-
-                    <div className="min-w-[240px]">
-                      <label className="text-xs text-gray-600 block mb-1">Deposit Tx Signature</label>
-                      <input
-                        value={txSignature}
-                        onChange={(e) => setTxSignature(e.target.value)}
-                        placeholder="Paste Solana tx signature"
-                        type="text"
-                        className="w-full px-2 py-1 border-2 border-[#808080] font-mono text-xs"
-                      />
-                    </div>
-                    
-                    <button
-                      type="button"
-                      onClick={() => act("stake")}
-                      disabled={!canQuery || busy || !hasEscrow}
-                      className="px-6 py-2 bg-[#000080] text-white font-bold disabled:opacity-50 hover:bg-[#000060]"
-                      title={!hasEscrow ? "Create escrow wallet first" : "Confirm deposit to escrow"}
-                    >
-                      CONFIRM DEPOSIT
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => act("request_unstake")}
-                      disabled={!canQuery || busy || !summary?.stakedAmount}
-                      className="px-6 py-2 bg-[#c0c0c0] text-black font-bold disabled:opacity-50 hover:bg-[#a0a0a0] border-2 border-[#808080]"
-                      title="Request to unstake - starts unlock timer"
-                    >
-                      REQUEST UNSTAKE
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={claimUnlocked}
-                      disabled={!canQuery || busy || !summary?.pendingUnstakeAmount}
-                      className="px-6 py-2 bg-green-600 text-white font-bold disabled:opacity-50 hover:bg-green-700"
-                      title="Claim unlocked tokens"
-                    >
-                      CLAIM TOKENS
-                    </button>
-                  </div>
-
-                  {/* Unclaimed allocations */}
-                  {summary?.unclaimedAllocations?.length > 0 && (
-                    <div className="mt-4 p-3 bg-[#E8FFE8] border border-green-600">
-                      <p className="text-sm font-bold mb-2">🎉 You have unclaimed launch allocations!</p>
-                      <div className="space-y-2">
-                        {summary.unclaimedAllocations.map((alloc) => (
-                          <div key={alloc.launchId} className="flex items-center justify-between bg-white p-2 border border-[#808080]">
-                            <div>
-                              <span className="font-bold">{alloc.launchName}</span>
-                              <span className="text-[#000080] ml-2">${alloc.ticker}</span>
-                              <span className="text-xs text-gray-500 ml-2">
-                                ({alloc.tokenAmount.toFixed(2)} tokens @ {(alloc.sharePercent * 100).toFixed(4)}%)
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-600 font-bold">
-                              Locked until unstake
-                            </div>
-                          </div>
-                        ))}
+                <div className="bg-white p-4">
+                  
+                  {/* STEP 1: Create Escrow */}
+                  <div className={`p-4 mb-4 border-2 ${hasEscrow ? "border-green-500 bg-green-50" : "border-[#FFD700] bg-[#FFFDE8]"}`}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${hasEscrow ? "bg-green-500" : "bg-[#FFD700] text-black"}`}>
+                        {hasEscrow ? "✓" : "1"}
+                      </div>
+                      <div className="font-bold text-black">
+                        {hasEscrow ? "Escrow Wallet Ready!" : "Create Your Escrow Wallet"}
                       </div>
                     </div>
-                  )}
+                    
+                    {hasEscrow ? (
+                      <div className="ml-11">
+                        <p className="text-xs text-gray-600 mb-2">Your secure deposit address:</p>
+                        <div className="bg-white border-2 border-[#808080] p-2 font-mono text-xs break-all select-all cursor-pointer hover:bg-gray-50"
+                          onClick={() => {
+                            navigator.clipboard.writeText(summary?.escrowWallet || escrowWallet);
+                            setMessage({ type: "success", text: "Escrow address copied!" });
+                            setTimeout(() => setMessage(null), 2000);
+                          }}
+                          title="Click to copy"
+                        >
+                          {summary?.escrowWallet || escrowWallet}
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-1">👆 Click to copy address</p>
+                      </div>
+                    ) : (
+                      <div className="ml-11">
+                        <p className="text-xs text-gray-600 mb-3">
+                          This creates a secure wallet where your $DEVITO will be held. 
+                          You control it through your connected wallet.
+                        </p>
+                        {canQuery ? (
+                          <button
+                            type="button"
+                            onClick={initEscrow}
+                            disabled={busy}
+                            className="px-6 py-3 bg-[#000080] text-white font-bold text-sm disabled:opacity-50 hover:bg-[#000060] transition"
+                          >
+                            {busy ? "⏳ Creating..." : "🔐 CREATE ESCROW WALLET"}
+                          </button>
+                        ) : (
+                          <p className="text-xs text-red-600">⚠️ Connect your wallet above first</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* STEP 2: Deposit */}
+                  <div className={`p-4 border-2 ${!hasEscrow ? "border-gray-300 bg-gray-100 opacity-60" : "border-[#000080] bg-[#E8E8FF]"}`}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${!hasEscrow ? "bg-gray-400 text-white" : "bg-[#000080] text-white"}`}>
+                        2
+                      </div>
+                      <div className="font-bold text-black">
+                        Deposit $DEVITO
+                      </div>
+                    </div>
+                    
+                    <div className="ml-11">
+                      {!hasEscrow ? (
+                        <p className="text-xs text-gray-500">Complete Step 1 first</p>
+                      ) : (
+                        <>
+                          <div className="bg-white border border-[#808080] p-3 mb-3">
+                            <p className="text-xs text-black mb-2"><strong>How to deposit:</strong></p>
+                            <ol className="text-xs text-gray-700 list-decimal ml-4 space-y-1">
+                              <li>Send $DEVITO tokens to your escrow address above</li>
+                              <li>Copy the transaction signature from your wallet</li>
+                              <li>Paste it below and click "Confirm Deposit"</li>
+                            </ol>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-xs font-bold text-black block mb-1">Amount you sent:</label>
+                              <input
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                placeholder="e.g. 1000"
+                                type="number"
+                                className="w-full px-3 py-2 border-2 border-[#808080] font-mono text-sm bg-white text-black"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="text-xs font-bold text-black block mb-1">Transaction Signature:</label>
+                              <input
+                                value={txSignature}
+                                onChange={(e) => setTxSignature(e.target.value)}
+                                placeholder="Paste the tx signature from your wallet here"
+                                type="text"
+                                className="w-full px-3 py-2 border-2 border-[#808080] font-mono text-xs bg-white text-black"
+                              />
+                              <p className="text-[10px] text-gray-500 mt-1">Find this in your wallet's transaction history</p>
+                            </div>
+                            
+                            <button
+                              type="button"
+                              onClick={() => act("stake")}
+                              disabled={!canQuery || busy || !amount || !txSignature}
+                              className="w-full px-6 py-3 bg-[#008000] text-white font-bold text-sm disabled:opacity-50 hover:bg-[#006000] transition"
+                            >
+                              {busy ? "⏳ Processing..." : "✅ CONFIRM DEPOSIT"}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Manage Existing Stake */}
+              {summary?.stakedAmount > 0 && (
+                <div className="border-2 border-[#808080] mb-4">
+                  <div className="bg-[#000080] text-white px-3 py-1 font-bold text-sm">
+                    Manage Your Stake
+                  </div>
+                  <div className="bg-white p-3">
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => act("request_unstake")}
+                        disabled={!canQuery || busy}
+                        className="px-6 py-2 bg-[#c0c0c0] text-black font-bold disabled:opacity-50 hover:bg-[#a0a0a0] border-2"
+                        style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
+                      >
+                        📤 REQUEST UNSTAKE
+                      </button>
+                      
+                      {summary?.pendingUnstakeAmount > 0 && (
+                        <button
+                          type="button"
+                          onClick={claimUnlocked}
+                          disabled={!canQuery || busy || formatTimeLeft(summary?.unlockAt) !== "Ready"}
+                          className="px-6 py-2 bg-green-600 text-white font-bold disabled:opacity-50 hover:bg-green-700"
+                        >
+                          💰 CLAIM {summary.pendingUnstakeAmount} TOKENS
+                        </button>
+                      )}
+                    </div>
+                    
+                    {summary?.pendingUnstakeAmount > 0 && formatTimeLeft(summary?.unlockAt) !== "Ready" && (
+                      <p className="text-xs text-orange-600 mt-2">
+                        ⏳ Unlock in: {formatTimeLeft(summary?.unlockAt)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Unclaimed allocations */}
+              {summary?.unclaimedAllocations?.length > 0 && (
+                <div className="border-2 border-green-600 mb-4">
+                  <div className="bg-green-600 text-white px-3 py-1 font-bold text-sm">
+                    🎉 Unclaimed Launch Rewards!
+                  </div>
+                  <div className="bg-[#E8FFE8] p-3">
+                    <div className="space-y-2">
+                      {summary.unclaimedAllocations.map((alloc) => (
+                        <div key={alloc.launchId} className="flex items-center justify-between bg-white p-2 border border-[#808080]">
+                          <div>
+                            <span className="font-bold">{alloc.launchName}</span>
+                            <span className="text-[#000080] ml-2">${alloc.ticker}</span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({alloc.tokenAmount.toFixed(2)} tokens)
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            Claim when you unstake
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Multiplier info */}
               <div className="border-2 border-[#808080] mb-4">
