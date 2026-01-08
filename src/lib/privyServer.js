@@ -1,5 +1,63 @@
 import crypto from "crypto";
+import bs58 from "bs58";
 import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+export async function withRetry(fn, opts) {
+  const attempts = Math.max(1, Math.min(6, opts?.attempts ?? 3));
+  const baseDelayMs = Math.max(50, opts?.baseDelayMs ?? 250);
+
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i === attempts - 1) break;
+      const backoff = baseDelayMs * 2 ** i;
+      const jitter = Math.floor(Math.random() * 80);
+      await sleep(backoff + jitter);
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+function isCommitmentSatisfied(current, desired) {
+  const c = String(current ?? "");
+  if (desired === "processed") return c === "processed" || c === "confirmed" || c === "finalized";
+  if (desired === "confirmed") return c === "confirmed" || c === "finalized";
+  if (desired === "finalized") return c === "finalized";
+  return c === desired;
+}
+
+export async function confirmSignatureViaRpc(connection, signature, commitment) {
+  const sig = String(signature ?? "").trim();
+  if (!sig) throw new Error("Missing signature");
+
+  const timeoutMs = 60_000;
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const st = await withRetry(() => connection.getSignatureStatuses([sig], { searchTransactionHistory: true }));
+    const s = st?.value?.[0];
+
+    if (s?.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(s.err)}`);
+    }
+
+    const confirmationStatus = typeof s?.confirmationStatus === "string" ? s.confirmationStatus : null;
+    if (confirmationStatus && isCommitmentSatisfied(confirmationStatus, commitment)) {
+      return;
+    }
+
+    await sleep(1200);
+  }
+
+  throw new Error("Transaction confirmation timeout");
+}
 
 function canonicalizeJson(value) {
   if (value === null) return "null";
@@ -325,3 +383,4 @@ export async function getTokenBalance(ownerPubkey, mintPubkey) {
     return 0;
   }
 }
+
