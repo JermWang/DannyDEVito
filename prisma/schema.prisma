@@ -95,6 +95,7 @@ model ChatMessage {
   wallet    String?  // User's wallet address (null for anonymous)
   nickname  String?  // Display name
   message   String
+  color     String?  // Username display color (hex)
   createdAt DateTime @default(now())
   
   @@index([createdAt])

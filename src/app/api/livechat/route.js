@@ -18,6 +18,7 @@ export async function GET(req) {
       username: m.nickname || "anon",
       message: m.message,
       wallet: m.wallet,
+      color: m.color || null,
       createdAt: m.createdAt.toISOString(),
     }));
 
@@ -34,6 +35,7 @@ export async function POST(req) {
   const username = typeof body?.username === "string" ? body.username.trim().slice(0, 32) : "anon";
   const message = typeof body?.message === "string" ? body.message.trim().slice(0, 500) : "";
   const wallet = typeof body?.wallet === "string" ? body.wallet : null;
+  const color = typeof body?.color === "string" ? body.color.trim().slice(0, 10) : null;
 
   if (!message) {
     return NextResponse.json({ ok: false, error: "Empty message" }, { status: 400 });
@@ -45,6 +47,7 @@ export async function POST(req) {
         nickname: username || "anon",
         message,
         wallet,
+        color,
       },
     });
 
@@ -55,6 +58,7 @@ export async function POST(req) {
         username: entry.nickname,
         message: entry.message,
         wallet: entry.wallet,
+        color: entry.color,
         createdAt: entry.createdAt.toISOString(),
       },
     });

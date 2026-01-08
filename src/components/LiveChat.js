@@ -50,6 +50,8 @@ export default function LiveChat({ windowMode = false }) {
   const [text, setText] = useState("");
   const [username, setUsername] = useState("");
   const [userColor, setUserColor] = useState(() => getRandomColor());
+  const [colorLocked, setColorLocked] = useState(false);
+  const [lockedUsername, setLockedUsername] = useState("");
   const [sending, setSending] = useState(false);
   const [connected, setConnected] = useState(false);
   const bottomRef = useRef(null);
@@ -58,6 +60,12 @@ export default function LiveChat({ windowMode = false }) {
   const displayName = useMemo(() => {
     return username.trim() || "anon";
   }, [username]);
+
+  const canChangeColor = useMemo(() => {
+    if (!colorLocked) return true;
+    const currentName = username.trim() || "anon";
+    return currentName !== lockedUsername;
+  }, [colorLocked, lockedUsername, username]);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -99,6 +107,12 @@ export default function LiveChat({ windowMode = false }) {
           color: userColor,
         }),
       });
+
+      if (!colorLocked || displayName !== lockedUsername) {
+        setColorLocked(true);
+        setLockedUsername(displayName);
+      }
+
       await fetchMessages();
     } finally {
       setSending(false);
@@ -125,10 +139,10 @@ export default function LiveChat({ windowMode = false }) {
           <div className="mb-1 flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setUserColor(getRandomColor())}
-              className="h-4 w-4 border border-[#808080]"
+              onClick={() => canChangeColor && setUserColor(getRandomColor())}
+              className={`h-4 w-4 border border-[#808080] ${!canChangeColor ? "opacity-60 cursor-not-allowed" : ""}`}
               style={{ background: userColor }}
-              title="Change color"
+              title={canChangeColor ? "Change color" : "Color locked for this username"}
             />
             <input
               type="text"
@@ -138,6 +152,9 @@ export default function LiveChat({ windowMode = false }) {
               maxLength={20}
               className="flex-1 px-1 py-0.5 text-xs border border-[#808080] bg-white text-black"
             />
+            {!canChangeColor && (
+              <span className="text-[9px] text-[#808080]" title="Color locked">🔒</span>
+            )}
           </div>
           <div className="flex gap-1">
             <input
@@ -203,10 +220,10 @@ export default function LiveChat({ windowMode = false }) {
         <div className="mb-2 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setUserColor(getRandomColor())}
-            className="h-5 w-5 rounded-full border border-[var(--tw-border)] transition hover:scale-110"
+            onClick={() => canChangeColor && setUserColor(getRandomColor())}
+            className={`h-5 w-5 rounded-full border border-[var(--tw-border)] transition ${canChangeColor ? "hover:scale-110" : "opacity-60 cursor-not-allowed"}`}
             style={{ background: userColor }}
-            title="Change color"
+            title={canChangeColor ? "Change color" : "Color locked for this username"}
           />
           <input
             type="text"
@@ -216,6 +233,9 @@ export default function LiveChat({ windowMode = false }) {
             maxLength={20}
             className="input flex-1 py-1 text-xs"
           />
+          {!canChangeColor && (
+            <span className="text-xs text-[var(--tw-text-dim)]" title="Color locked">🔒</span>
+          )}
         </div>
         <div className="flex gap-2">
           <input
