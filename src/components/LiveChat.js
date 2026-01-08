@@ -57,8 +57,10 @@ export default function LiveChat({ windowMode = false }) {
   const [cooldown, setCooldown] = useState(0);
   const [banInfo, setBanInfo] = useState(null);
   const bottomRef = useRef(null);
+  const containerRef = useRef(null);
   const pollRef = useRef(null);
   const cooldownRef = useRef(null);
+  const isNearBottomRef = useRef(true);
 
   const displayName = useMemo(() => {
     return username.trim() || "anon";
@@ -107,8 +109,21 @@ export default function LiveChat({ windowMode = false }) {
     }
   }, [banInfo]);
 
+  const checkIfNearBottom = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return true;
+    const threshold = 60;
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    isNearBottomRef.current = checkIfNearBottom();
+  }, [checkIfNearBottom]);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages.length]);
 
   async function send() {
@@ -159,7 +174,11 @@ export default function LiveChat({ windowMode = false }) {
     return (
       <div className="flex h-full flex-col bg-white">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto py-1 bg-white">
+        <div
+          ref={containerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto py-1 bg-white"
+        >
           {messages.length === 0 ? (
             <div className="px-2 py-4 text-center text-xs text-[#808080]">
               It's quiet in here. Too quiet. Start screamin'!
@@ -252,7 +271,11 @@ export default function LiveChat({ windowMode = false }) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-2 text-sm">
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto py-2 text-sm"
+      >
         {messages.length === 0 ? (
           <div className="px-3 py-4 text-center text-sm text-[var(--tw-text-dim)]">
             The Telegram's dead, kid. Be the first degenerate to say something.
