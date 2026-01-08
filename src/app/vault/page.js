@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import IEBrowser from "@/components/IEBrowser";
+import LaunchCountdown from "@/components/LaunchCountdown";
 
 function formatCountdown(ms) {
   const v = Math.max(0, Number(ms) || 0);
@@ -178,6 +179,11 @@ export default function VaultPage() {
                 <p className="text-xs text-gray-600 mt-1">
                   Where I keep the goods ~ every 72 hours I crawl outta here with a new coin
                 </p>
+              </div>
+
+              {/* Countdown Timer */}
+              <div className="mb-4">
+                <LaunchCountdown />
               </div>
 
               {/* Status banner */}

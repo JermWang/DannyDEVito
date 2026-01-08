@@ -6,6 +6,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 import ChatPanel from "@/components/ChatPanel";
 import DraggableWindow from "@/components/DraggableWindow";
+import LaunchCountdown from "@/components/LaunchCountdown";
 import LiveChat from "@/components/LiveChat";
 import MemeGenerator from "@/components/MemeGenerator";
 import MusicPlayer from "@/components/MusicPlayer";
@@ -267,6 +268,24 @@ export default function Home() {
             <div className="desktop-icon-img">🎵</div>
             <span className="desktop-icon-label">Music</span>
           </button>
+        </div>
+
+        {/* Launch Countdown Widget */}
+        <div className="absolute bottom-14 left-4 z-40">
+          <Link href="/vault" className="block">
+            <div
+              className="win-window"
+              style={{ width: 180 }}
+            >
+              <div className="win-titlebar">
+                <span className="win-titlebar-text">🚀 Next Launch</span>
+              </div>
+              <div className="win-content p-2">
+                <LaunchCountdown compact />
+                <div className="text-[9px] text-[#808080] mt-1">Click to view Vault</div>
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Music Player Widget */}
