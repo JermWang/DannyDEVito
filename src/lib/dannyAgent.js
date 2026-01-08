@@ -19,14 +19,22 @@ function getOpenAI() {
 export async function loadPersonalityProfile() {
   if (cachedProfile) return cachedProfile;
 
-  const rel = process.env.AGENT_PROFILE_PATH || "docs/danny_devito_personality.json";
-  const filePath = path.join(process.cwd(), rel);
+  const envPathRaw = String(process.env.AGENT_PROFILE_PATH ?? "").trim();
+  const candidates = [];
+  if (envPathRaw && envPathRaw.toLowerCase().endsWith(".json")) {
+    candidates.push(envPathRaw);
+  }
+  candidates.push("docs/danny_devito_personality.json");
 
-  try {
-    const raw = await fs.readFile(filePath, "utf8");
-    cachedProfile = JSON.parse(raw);
-  } catch {
-    cachedProfile = null;
+  for (const rel of candidates) {
+    const filePath = path.join(process.cwd(), rel);
+    try {
+      const raw = await fs.readFile(filePath, "utf8");
+      cachedProfile = JSON.parse(raw);
+      break;
+    } catch {
+      cachedProfile = null;
+    }
   }
 
   return cachedProfile;
@@ -81,6 +89,10 @@ RULES:
 9. If someone asks about crypto/staking, explain it like Frank would (schemes, the pit, etc.)
 10. You can be conversational but stay IN CHARACTER as Frank
 
+ABSOLUTE CONSTRAINTS:
+- Do NOT encourage, instruct, or assist with scams, fraud, theft, or wrongdoing.
+- If asked for how to "rug", "drain", or scam: refuse and pivot back to parody/entertainment.
+
 You are parody/entertainment. Never give real financial advice.`;
 }
 
@@ -109,29 +121,51 @@ export async function generateDannyResponse(userMessage, conversationHistory = [
     return completion.choices[0]?.message?.content || "Ey, my brain's fried. Try again, kid.";
   } catch (error) {
     console.error("OpenAI error:", error);
-    return fallbackResponse(userMessage);
+    return fallbackResponse(profile, userMessage);
   }
 }
 
-function fallbackResponse(userMessage) {
+function normalizeQuotedLine(line) {
+  return String(line ?? "")
+    .replace(/[“”]/g, '"')
+    .replace(/^"|"$/g, "")
+    .trim();
+}
+
+function fallbackResponse(profile, userMessage) {
+  const char = profile?.character_profile || {};
+  const keyPhrases = (char.mannerisms_speech_patterns?.key_phrases || [])
+    .map(normalizeQuotedLine)
+    .filter(Boolean);
+  const dialogues = char.deep_cuts_dialogues || {};
+  const dialogueLines = [
+    dialogues.on_being_questioned,
+    dialogues.on_failure,
+    dialogues.on_success,
+    dialogues.on_community_management,
+  ]
+    .map(normalizeQuotedLine)
+    .filter(Boolean);
+
   const openers = [
-    "Alright listen—",
-    "Lemme tell ya something—",
-    "Okay. Okay. Hear me out—",
-    "Buddy, pal—",
-    "This is beautiful chaos—",
+    "Alright listen, kid—",
+    "Buddy. Pal. Hear me out—",
+    "Okay okay okay—",
+    "What are you lookin' at?",
+    "Lemme tell ya somethin'—",
   ];
-  
-  const vibes = [
-    "we make it small, loud, and unforgettable.",
-    "we turn that into a coin and a problem for tomorrow.",
-    "that idea's got teeth. I respect it.",
-    "I'm not saying it's smart. I'm saying it's destiny.",
-    "I can smell the pump from here.",
-  ];
-  
+
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  return `${pick(openers)} ${pick(vibes)} Now give me a ticker—four letters, maximum mischief.`;
+
+  const phrase = keyPhrases.length ? pick(keyPhrases) : "I'm the trash man.";
+  const line = dialogueLines.length ? pick(dialogueLines) : "I'm up to my nuts in this thing.";
+
+  const hint =
+    typeof userMessage === "string" && userMessage.trim()
+      ? `Now what'd you mean by: ${userMessage.trim().slice(0, 60)}?`
+      : "Now talk to me. What's the situation?";
+
+  return `${pick(openers)} ${phrase} ${line} ${hint}`.trim();
 }
 
 export async function generateTweet(context = "random") {
