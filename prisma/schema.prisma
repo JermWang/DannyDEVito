@@ -158,3 +158,15 @@ model ScheduledLaunchDraft {
   @@unique([scheduledAt])
   @@index([scheduledAt])
 }
+
+// Chat bans for spam/abuse
+model ChatBan {
+  id          String   @id @default(cuid())
+  identifier  String   @unique // IP hash or fingerprint
+  reason      String?
+  expiresAt   DateTime?  // null = permanent
+  createdAt   DateTime @default(now())
+
+  @@index([identifier])
+  @@index([expiresAt])
+}

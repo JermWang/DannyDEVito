@@ -54,8 +54,11 @@ export default function LiveChat({ windowMode = false }) {
   const [lockedUsername, setLockedUsername] = useState("");
   const [sending, setSending] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [banInfo, setBanInfo] = useState(null);
   const bottomRef = useRef(null);
   const pollRef = useRef(null);
+  const cooldownRef = useRef(null);
 
   const displayName = useMemo(() => {
     return username.trim() || "anon";
@@ -87,12 +90,30 @@ export default function LiveChat({ windowMode = false }) {
   }, [fetchMessages]);
 
   useEffect(() => {
+    if (cooldown > 0) {
+      cooldownRef.current = setTimeout(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+      return () => clearTimeout(cooldownRef.current);
+    }
+  }, [cooldown]);
+
+  useEffect(() => {
+    if (banInfo?.expiresIn > 0) {
+      const t = setTimeout(() => {
+        setBanInfo((b) => (b ? { ...b, expiresIn: b.expiresIn - 1 } : null));
+      }, 1000);
+      return () => clearTimeout(t);
+    } else if (banInfo?.expiresIn === 0) {
+      setBanInfo(null);
+    }
+  }, [banInfo]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
   async function send() {
     const msg = text.trim();
-    if (!msg || sending) return;
+    if (!msg || sending || cooldown > 0 || banInfo) return;
 
     setSending(true);
     setText("");
@@ -108,9 +129,18 @@ export default function LiveChat({ windowMode = false }) {
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        console.error("Failed to send message:", await res.text());
+        if (data.error === "cooldown" && data.waitSeconds) {
+          setCooldown(data.waitSeconds);
+        } else if (data.error === "banned") {
+          setBanInfo({ reason: data.reason, expiresIn: data.expiresIn });
+        } else {
+          console.error("Failed to send message:", data);
+        }
       } else {
+        setCooldown(3);
         if (!colorLocked || displayName !== lockedUsername) {
           setColorLocked(true);
           setLockedUsername(displayName);
@@ -162,32 +192,44 @@ export default function LiveChat({ windowMode = false }) {
               <span className="text-[9px] text-[#808080]" title="Color locked">🔒</span>
             )}
           </div>
-          <div className="flex gap-1">
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Scream into the void..."
-              maxLength={500}
-              className="flex-1 px-2 py-1 text-sm border-2 bg-white text-black"
-              style={{ borderColor: "#808080 #ffffff #ffffff #808080" }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={send}
-              disabled={!text.trim() || sending}
-              className="px-2 py-1 text-xs bg-[#c0c0c0] border-2 font-bold"
-              style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
-            >
-              Chat
-            </button>
-          </div>
+          {banInfo ? (
+            <div className="text-xs text-red-600 bg-red-100 border border-red-400 p-2 text-center">
+              🚫 {banInfo.reason}
+              {banInfo.expiresIn > 0 && (
+                <span className="block mt-1 font-mono">
+                  Expires in: {Math.floor(banInfo.expiresIn / 60)}:{String(banInfo.expiresIn % 60).padStart(2, "0")}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-1">
+              <input
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={cooldown > 0 ? `Wait ${cooldown}s...` : "Scream into the void..."}
+                maxLength={500}
+                disabled={cooldown > 0}
+                className="flex-1 px-2 py-1 text-sm border-2 bg-white text-black disabled:bg-gray-100"
+                style={{ borderColor: "#808080 #ffffff #ffffff #808080" }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={send}
+                disabled={!text.trim() || sending || cooldown > 0}
+                className="px-2 py-1 text-xs bg-[#c0c0c0] border-2 font-bold disabled:opacity-50"
+                style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
+              >
+                {cooldown > 0 ? cooldown : "Chat"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -243,30 +285,42 @@ export default function LiveChat({ windowMode = false }) {
             <span className="text-xs text-[var(--tw-text-dim)]" title="Color locked">🔒</span>
           )}
         </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Scream into the void..."
-            maxLength={500}
-            className="input flex-1"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={send}
-            disabled={!text.trim() || sending}
-            className="btn-primary px-4"
-          >
-            Chat
-          </button>
-        </div>
+        {banInfo ? (
+          <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/30 rounded p-3 text-center">
+            🚫 {banInfo.reason}
+            {banInfo.expiresIn > 0 && (
+              <span className="block mt-1 font-mono text-xs">
+                Expires in: {Math.floor(banInfo.expiresIn / 60)}:{String(banInfo.expiresIn % 60).padStart(2, "0")}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={cooldown > 0 ? `Wait ${cooldown}s...` : "Scream into the void..."}
+              maxLength={500}
+              disabled={cooldown > 0}
+              className="input flex-1 disabled:opacity-50"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={send}
+              disabled={!text.trim() || sending || cooldown > 0}
+              className="btn-primary px-4 disabled:opacity-50"
+            >
+              {cooldown > 0 ? cooldown : "Chat"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
