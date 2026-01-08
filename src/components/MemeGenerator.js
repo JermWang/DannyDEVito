@@ -435,13 +435,11 @@ export default function MemeGenerator() {
     tempCanvas.height = canvas.height;
     const ctx = tempCanvas.getContext("2d");
     
-    // Draw background
+    // Draw background if exists, otherwise leave transparent for PNG
     if (backgroundImage) {
       ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    // No background = transparent PNG (don't fill with white)
     
     // Draw stickers without selection
     stickers.forEach((sticker) => {
@@ -459,7 +457,7 @@ export default function MemeGenerator() {
       ctx.restore();
     });
     
-    // Download
+    // Download as PNG (preserves transparency)
     const link = document.createElement("a");
     link.download = `devito-meme-${Date.now()}.png`;
     link.href = tempCanvas.toDataURL("image/png");
