@@ -2,14 +2,38 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 import ChatPanel from "@/components/ChatPanel";
 import DraggableWindow from "@/components/DraggableWindow";
 import LiveChat from "@/components/LiveChat";
 import MemeGenerator from "@/components/MemeGenerator";
 
+function PhantomIcon({ className = "w-7 h-7" }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id="phantomGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#AB9FF2" />
+          <stop offset="1" stopColor="#7C66FF" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M32 6c-12.7 0-23 10.3-23 23v22c0 4.4 3.6 8 8 8 3.3 0 6.2-2 7.4-4.9L26 50c1.1-2.8 3.8-4.7 6.9-4.7h.2c3.1 0 5.8 1.9 6.9 4.7l1.6 4.1c1.1 2.9 4 4.9 7.4 4.9 4.4 0 8-3.6 8-8V29C55 16.3 44.7 6 32 6z"
+        fill="url(#phantomGrad)"
+      />
+      <path
+        d="M24 33c0 2.2-1.8 4-4 4s-4-1.8-4-4 1.8-4 4-4 4 1.8 4 4zm24 0c0 2.2-1.8 4-4 4s-4-1.8-4-4 1.8-4 4-4 4 1.8 4 4z"
+        fill="#0B0B12"
+        opacity="0.9"
+      />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [windows, setWindows] = useState({
+    wallet: { open: false, minimized: false, zIndex: 8 },
     agentChat: { open: true, minimized: false, zIndex: 10 },
     liveChat: { open: true, minimized: false, zIndex: 11 },
     memeGen: { open: false, minimized: false, zIndex: 9 },
@@ -69,6 +93,17 @@ export default function Home() {
       <div className="absolute inset-0 pb-7">
         {/* Desktop icons */}
         <div className="flex flex-col gap-2 p-4">
+          <button
+            type="button"
+            className="desktop-icon"
+            onDoubleClick={() => toggleWindow("wallet")}
+          >
+            <div className="desktop-icon-img">
+              <PhantomIcon />
+            </div>
+            <span className="desktop-icon-label">Wallet</span>
+          </button>
+
           <button
             type="button"
             className="desktop-icon"
@@ -156,6 +191,28 @@ export default function Home() {
           </button>
         </div>
 
+        <DraggableWindow
+          title="Wallet Connect"
+          icon={<PhantomIcon className="w-4 h-4" />}
+          isOpen={windows.wallet.open}
+          onClose={() => closeWindow("wallet")}
+          onFocus={() => bringToFront("wallet")}
+          zIndex={windows.wallet.zIndex}
+          defaultPosition={{ x: 140, y: 120 }}
+          defaultSize={{ width: 360, height: 220 }}
+          minSize={{ width: 300, height: 200 }}
+        >
+          <div className="win-content-inner p-4 flex flex-col gap-3">
+            <div className="text-sm font-semibold">Solana Wallet</div>
+            <div>
+              <WalletMultiButton />
+            </div>
+            <div className="text-xs text-[var(--tw-text-dim)]">
+              Connect a wallet to enable holder-gated features.
+            </div>
+          </div>
+        </DraggableWindow>
+
         {/* Agent Chat Window */}
         <DraggableWindow
           title="Agent Chat - Danny DEVito"
@@ -219,6 +276,16 @@ export default function Home() {
         </button>
 
         <div className="win-taskbar-items">
+          <button
+            type="button"
+            className={`win-taskbar-item ${windows.wallet.open ? "active" : ""}`}
+            onClick={() => toggleWindow("wallet")}
+          >
+            <span>
+              <PhantomIcon className="w-4 h-4" />
+            </span>
+            <span>Wallet</span>
+          </button>
           <button
             type="button"
             className={`win-taskbar-item ${windows.agentChat.open ? "active" : ""}`}
