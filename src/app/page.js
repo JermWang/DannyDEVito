@@ -337,36 +337,20 @@ export default function Home() {
           defaultSize={{ width: desktopLayout.contract.width, height: desktopLayout.contract.height }}
           minSize={{ width: 260, height: 120 }}
         >
-          <div className="win-content-inner p-4 flex flex-col gap-3">
-            <div className="text-xs font-semibold">$DEVITO Contract</div>
-            <div className="text-xs font-mono break-all">
+          <div
+            className="win-content-inner p-4 flex flex-col gap-2 cursor-pointer select-all"
+            onClick={() => {
+              const ca = process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "";
+              if (!ca) return;
+              navigator.clipboard.writeText(ca);
+            }}
+            title="Click to copy"
+          >
+            <div className="text-xs font-semibold text-black">$DEVITO Contract</div>
+            <div className="text-xs font-mono break-all text-black">
               {process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "Set NEXT_PUBLIC_TOKEN_CONTRACT"}
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="win-btn"
-                onClick={() => {
-                  const ca = process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "";
-                  if (!ca) return;
-                  navigator.clipboard.writeText(ca);
-                }}
-                disabled={!process.env.NEXT_PUBLIC_TOKEN_CONTRACT}
-              >
-                Copy
-              </button>
-              <a
-                className="win-btn"
-                href={process.env.NEXT_PUBLIC_TOKEN_CONTRACT ? `https://solscan.io/token/${process.env.NEXT_PUBLIC_TOKEN_CONTRACT}` : "#"}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => {
-                  if (!process.env.NEXT_PUBLIC_TOKEN_CONTRACT) e.preventDefault();
-                }}
-              >
-                Solscan
-              </a>
-            </div>
+            <div className="text-[10px] text-black mt-1">Click anywhere to copy</div>
           </div>
         </DraggableWindow>
 
