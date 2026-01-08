@@ -258,6 +258,8 @@ export async function POST(req) {
       AMOUNT_INVALID: { error: "amount_invalid", status: 400 },
       DEPOSIT_AMOUNT_MISMATCH: { error: "deposit_amount_mismatch", status: 400 },
       DEPOSIT_SOURCE_MISMATCH: { error: "deposit_source_mismatch", status: 400 },
+      "PRIVY_APP_ID and PRIVY_APP_SECRET are required": { error: "privy_not_configured", status: 500 },
+      "Privy request failed": { error: "privy_request_failed", status: 500 },
     };
 
     const mapped = errorMap[error.message];
@@ -265,6 +267,12 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: mapped.error }, { status: mapped.status });
     }
 
-    return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });
+    // Check for partial matches
+    const errMsg = String(error?.message ?? "");
+    if (errMsg.includes("Privy")) {
+      return NextResponse.json({ ok: false, error: "privy_error", detail: errMsg }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: false, error: "internal_error", detail: errMsg }, { status: 500 });
   }
 }
