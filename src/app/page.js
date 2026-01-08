@@ -55,6 +55,7 @@ export default function Home() {
   const [musicPlayerOpen, setMusicPlayerOpen] = useState(true);
   const [time, setTime] = useState("");
   const [topZ, setTopZ] = useState(12);
+  const [copiedToast, setCopiedToast] = useState(false);
 
   const [desktopLayout, setDesktopLayout] = useState({
     contract: { x: 860, y: 24, width: 240, height: 110 },
@@ -341,11 +342,13 @@ export default function Home() {
           minSize={{ width: 260, height: 120 }}
         >
           <div
-            className="win-content-inner p-4 flex flex-col gap-2 cursor-pointer select-all"
+            className="win-content-inner p-4 flex flex-col gap-2 cursor-pointer select-all relative"
             onClick={() => {
               const ca = process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "";
               if (!ca) return;
               navigator.clipboard.writeText(ca);
+              setCopiedToast(true);
+              setTimeout(() => setCopiedToast(false), 1500);
             }}
             title="Click to copy"
           >
@@ -354,6 +357,24 @@ export default function Home() {
               {process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "Set NEXT_PUBLIC_TOKEN_CONTRACT"}
             </div>
             <div className="text-[10px] text-black mt-1">Click anywhere to copy</div>
+            {copiedToast && (
+              <div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{ animation: "fadeOut 1.5s ease-out forwards" }}
+              >
+                <div
+                  className="px-3 py-1 text-xs font-bold text-black"
+                  style={{
+                    background: "#c0c0c0",
+                    border: "2px solid",
+                    borderColor: "#ffffff #808080 #808080 #ffffff",
+                    boxShadow: "2px 2px 0 #000",
+                  }}
+                >
+                  ✓ Copied!
+                </div>
+              </div>
+            )}
           </div>
         </DraggableWindow>
 
