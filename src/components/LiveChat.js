@@ -98,7 +98,7 @@ export default function LiveChat({ windowMode = false }) {
     setText("");
 
     try {
-      await fetch("/api/livechat", {
+      const res = await fetch("/api/livechat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -108,12 +108,18 @@ export default function LiveChat({ windowMode = false }) {
         }),
       });
 
-      if (!colorLocked || displayName !== lockedUsername) {
-        setColorLocked(true);
-        setLockedUsername(displayName);
+      if (!res.ok) {
+        console.error("Failed to send message:", await res.text());
+      } else {
+        if (!colorLocked || displayName !== lockedUsername) {
+          setColorLocked(true);
+          setLockedUsername(displayName);
+        }
       }
 
       await fetchMessages();
+    } catch (err) {
+      console.error("Send error:", err);
     } finally {
       setSending(false);
     }

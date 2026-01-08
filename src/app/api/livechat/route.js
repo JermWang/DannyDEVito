@@ -42,13 +42,20 @@ export async function POST(req) {
   }
 
   try {
+    // Build data object - color field may not exist in older schemas
+    const data = {
+      nickname: username || "anon",
+      message,
+      wallet,
+    };
+    
+    // Only add color if it's provided (graceful handling if column doesn't exist)
+    if (color) {
+      data.color = color;
+    }
+
     const entry = await prisma.chatMessage.create({
-      data: {
-        nickname: username || "anon",
-        message,
-        wallet,
-        color,
-      },
+      data,
     });
 
     return NextResponse.json({
