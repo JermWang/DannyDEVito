@@ -56,9 +56,9 @@ export default function Home() {
   const [topZ, setTopZ] = useState(12);
 
   const [desktopLayout, setDesktopLayout] = useState({
-    contract: { x: 840, y: 60, width: 320, height: 150 },
-    agentChat: { x: 720, y: 230, width: 450, height: 420 },
-    liveChat: { x: 360, y: 230, width: 340, height: 450 },
+    contract: { x: 1100, y: 60, width: 320, height: 150 },
+    agentChat: { x: 1000, y: 230, width: 450, height: 420 },
+    liveChat: { x: 20, y: 230, width: 340, height: 450 },
   });
 
   useEffect(() => {
