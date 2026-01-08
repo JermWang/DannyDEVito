@@ -1,0 +1,90 @@
+// Prisma schema for Danny DEVito staking platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User's connected wallet linked to their Privy escrow wallet
+model StakeAccount {
+  id              String   @id @default(cuid())
+  userWallet      String   @unique // User's Solana wallet address
+  privyWalletId   String?  @unique // Privy server wallet ID (created on first stake)
+  privyWalletAddr String?  // Privy wallet Solana address
+  
+  stakedAmount         Decimal  @default(0) @db.Decimal(20, 9) // $DEVITO staked
+  pendingUnstakeAmount Decimal  @default(0) @db.Decimal(20, 9) // Amount pending unlock
+  
+  stakedAt        DateTime? // When user first staked (for multiplier calc)
+  unlockAt        DateTime? // When pending unstake becomes claimable
+  cooldownUntil   DateTime? // 48h cooldown after claim before re-staking
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  stakeHistory    StakeEvent[]
+  allocations     Allocation[]
+}
+
+// Log of all stake/unstake/claim events
+model StakeEvent {
+  id            String   @id @default(cuid())
+  accountId     String
+  account       StakeAccount @relation(fields: [accountId], references: [id])
+  
+  action        String   // "stake", "request_unstake", "claim"
+  amount        Decimal  @db.Decimal(20, 9)
+  txSignature   String?  // Solana transaction signature
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([accountId])
+}
+
+// Coin launches from the vault
+model Launch {
+  id          String   @id @default(cuid())
+  name        String
+  ticker      String
+  mint        String?  // Token mint address
+  pumpUrl     String?
+  status      String   @default("draft") // "draft", "pending", "launched", "failed"
+  
+  totalSupply    Decimal? @db.Decimal(20, 9) // Total tokens for distribution
+  stakerShare    Decimal? @db.Decimal(5, 4)  // % allocated to stakers (e.g. 0.10 = 10%)
+  
+  launchedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  allocations Allocation[]
+}
+
+// Allocation of launch tokens to stakers
+model Allocation {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     StakeAccount @relation(fields: [accountId], references: [id])
+  launchId    String
+  launch      Launch   @relation(fields: [launchId], references: [id])
+  
+  stakedAtSnapshot  Decimal  @db.Decimal(20, 9) // User's stake at time of launch
+  multiplier        Decimal  @db.Decimal(5, 2)  // Time-based multiplier
+  weightedStake     Decimal  @db.Decimal(20, 9) // stakedAtSnapshot * multiplier
+  sharePercent      Decimal  @db.Decimal(10, 8) // % of total weighted pool
+  
+  tokenAmount       Decimal  @db.Decimal(20, 9) // Tokens allocated
+  claimed           Boolean  @default(false)
+  claimedAt         DateTime?
+  claimTxSignature  String?
+  
+  createdAt         DateTime @default(now())
+  
+  @@unique([accountId, launchId])
+  @@index([launchId])
+}
