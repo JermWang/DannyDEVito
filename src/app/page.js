@@ -86,29 +86,24 @@ export default function Home() {
     }
 
     const width = typeof window !== "undefined" ? window.innerWidth : 1200;
-    const margin = 24;
+    const margin = 60;
     const gap = 16;
 
-    const contractW = 320;
-    const contractH = 150;
-    const agentW = 450;
-    const agentH = 420;
-    const liveW = 340;
-    const liveH = 450;
+    const contractW = 280;
+    const contractH = 120;
+    const agentW = 380;
+    const agentH = 320;
+    const liveW = 300;
+    const liveH = 380;
 
     const contractX = Math.max(margin, width - contractW - margin);
     const contractY = 60;
 
-    const rowY = contractY + contractH + gap;
-    const twoColFits = width >= margin + liveW + gap + agentW + margin;
+    const liveX = margin;
+    const liveY = 60;
 
     const agentX = Math.max(margin, width - agentW - margin);
-    const liveX = twoColFits
-      ? Math.max(margin, width - margin - agentW - gap - liveW)
-      : agentX;
-
-    const agentY = rowY;
-    const liveY = twoColFits ? rowY : rowY + agentH + gap;
+    const agentY = contractY + contractH + gap;
 
     setDesktopLayout({
       contract: { x: contractX, y: contractY, width: contractW, height: contractH },
@@ -329,7 +324,7 @@ export default function Home() {
           onFocus={() => bringToFront("liveChat")}
           zIndex={windows.liveChat.zIndex}
           defaultPosition={{ x: desktopLayout.liveChat.x, y: desktopLayout.liveChat.y }}
-          defaultSize={{ width: 340, height: 450 }}
+          defaultSize={{ width: desktopLayout.liveChat.width, height: desktopLayout.liveChat.height }}
           minSize={{ width: 280, height: 300 }}
         >
           <div className="win-content-inner p-0 flex flex-col h-full">
