@@ -141,6 +141,22 @@ export default function ChatLogsPage() {
               else loadSessions();
             }}
           >
+            {/* Spammy ticker banner */}
+            <div className="bg-black text-[10px] font-bold overflow-hidden whitespace-nowrap">
+              <marquee behavior="scroll" direction="left" scrollamount="3" className="py-1">
+                <span className="text-red-500">🚨 YOU ARE THE 1,000,000th VISITOR! 🚨</span>
+                <span className="mx-4 text-yellow-400">⚠️ YOUR COMPUTER HAS 47 VIRUSES ⚠️</span>
+                <span className="mx-4 text-green-400">💰 SINGLE MOMS IN YOUR AREA WANT TO TRADE CRYPTO 💰</span>
+                <span className="mx-4 text-pink-400">🎰 CLICK HERE TO CLAIM FREE $DEVITO 🎰</span>
+                <span className="mx-4 text-cyan-400">🔥 DOCTORS HATE THIS ONE WEIRD TRICK 🔥</span>
+                <span className="mx-4 text-orange-400">📈 $DEVITO TO $1 GUARANTEED* 📈</span>
+                <span className="mx-4 text-purple-400">🥚 EGG TOKEN PRESALE LIVE NOW 🥚</span>
+                <span className="mx-4 text-lime-400">💎 DIAMOND HANDS ONLY 💎</span>
+                <span className="mx-4 text-red-400">🚀 NEXT 1000X GEM FOUND 🚀</span>
+                <span className="mx-4 text-yellow-300">⬇️ DOWNLOAD MORE RAM ⬇️</span>
+              </marquee>
+            </div>
+
             <div className="p-4 font-sans text-sm text-black bg-white max-w-3xl mx-auto">
               <div className="border-b-2 border-[#000080] pb-2 mb-4">
                 <h1 className="text-2xl font-bold text-[#000080] flex items-center gap-2">
