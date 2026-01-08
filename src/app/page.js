@@ -57,9 +57,9 @@ export default function Home() {
   const [topZ, setTopZ] = useState(12);
 
   const [desktopLayout, setDesktopLayout] = useState({
-    contract: { x: 780, y: 60, width: 280, height: 120 },
-    agentChat: { x: 680, y: 200, width: 380, height: 320 },
-    liveChat: { x: 60, y: 60, width: 300, height: 380 },
+    contract: { x: 860, y: 24, width: 240, height: 110 },
+    agentChat: { x: 820, y: 260, width: 320, height: 320 },
+    liveChat: { x: 24, y: 24, width: 300, height: 380 },
   });
 
   useEffect(() => {
@@ -86,24 +86,24 @@ export default function Home() {
     }
 
     const width = typeof window !== "undefined" ? window.innerWidth : 1200;
-    const margin = 60;
+    const margin = 24;
     const gap = 16;
 
-    const contractW = 280;
-    const contractH = 120;
-    const agentW = 380;
+    const contractW = 240;
+    const contractH = 110;
+    const agentW = 320;
     const agentH = 320;
     const liveW = 300;
     const liveH = 380;
 
     const contractX = Math.max(margin, width - contractW - margin);
-    const contractY = 60;
+    const contractY = 24;
 
     const liveX = margin;
-    const liveY = 60;
+    const liveY = 24;
 
     const agentX = Math.max(margin, width - agentW - margin);
-    const agentY = contractY + contractH + gap;
+    const agentY = Math.max(contractY + contractH + gap, 260);
 
     setDesktopLayout({
       contract: { x: contractX, y: contractY, width: contractW, height: contractH },
