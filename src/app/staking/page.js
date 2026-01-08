@@ -81,6 +81,8 @@ export default function StakingPage() {
   const [escrowWallet, setEscrowWallet] = useState(null);
   const [history, setHistory] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [leaderboard, setLeaderboard] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -105,6 +107,22 @@ export default function StakingPage() {
       console.error("Failed to fetch history:", e);
     }
   }
+
+  async function fetchLeaderboard() {
+    try {
+      const res = await fetch("/api/staking/leaderboard?limit=20");
+      const data = await res.json();
+      if (data.ok) {
+        setLeaderboard(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch leaderboard:", e);
+    }
+  }
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
 
   async function refresh() {
     if (!canQuery) return;
@@ -727,6 +745,87 @@ export default function StakingPage() {
                   )}
                 </div>
               )}
+
+              {/* Leaderboard */}
+              <div className="border-2 border-[#808080] mb-4">
+                <div 
+                  className="bg-[#FFD700] text-black px-3 py-1 font-bold text-sm flex justify-between items-center cursor-pointer"
+                  onClick={() => setShowLeaderboard(!showLeaderboard)}
+                >
+                  <span>🏆 Staking Leaderboard</span>
+                  <span>{showLeaderboard ? "▼" : "▶"}</span>
+                </div>
+                {showLeaderboard && (
+                  <div className="bg-white p-3 text-xs">
+                    {!leaderboard ? (
+                      <div className="text-center py-4 text-gray-500">Loading leaderboard...</div>
+                    ) : leaderboard.leaderboard?.length === 0 ? (
+                      <div className="text-center py-4 text-gray-500">No stakers yet. Be the first!</div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                          <div className="bg-[#FFD700] p-2 border border-[#808080]">
+                            <div className="text-[10px] text-gray-700">Total Stakers</div>
+                            <div className="font-bold text-black">{leaderboard.stats?.totalStakers || 0}</div>
+                          </div>
+                          <div className="bg-[#E8E8FF] p-2 border border-[#808080]">
+                            <div className="text-[10px] text-gray-600">Total Staked</div>
+                            <div className="font-bold text-[#000080]">{(leaderboard.stats?.totalStaked || 0).toLocaleString()}</div>
+                          </div>
+                          <div className="bg-[#E8FFE8] p-2 border border-[#808080]">
+                            <div className="text-[10px] text-gray-600">Weighted Total</div>
+                            <div className="font-bold text-green-600">{(leaderboard.stats?.totalWeighted || 0).toLocaleString()}</div>
+                          </div>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto border border-[#808080]">
+                          <table className="w-full text-[10px]">
+                            <thead className="bg-[#c0c0c0] sticky top-0">
+                              <tr>
+                                <th className="px-2 py-1 text-left">#</th>
+                                <th className="px-2 py-1 text-left">Wallet</th>
+                                <th className="px-2 py-1 text-right">Staked</th>
+                                <th className="px-2 py-1 text-right">Multiplier</th>
+                                <th className="px-2 py-1 text-right">Weighted</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {leaderboard.leaderboard.map((entry) => (
+                                <tr 
+                                  key={entry.wallet} 
+                                  className={`border-t border-[#c0c0c0] hover:bg-[#FFFFD0] ${entry.wallet === wallet ? "bg-[#E8FFE8]" : ""}`}
+                                >
+                                  <td className="px-2 py-1 font-bold">
+                                    {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : entry.rank}
+                                  </td>
+                                  <td className="px-2 py-1 font-mono">
+                                    {entry.walletShort}
+                                    {entry.wallet === wallet && <span className="ml-1 text-green-600">(You)</span>}
+                                  </td>
+                                  <td className="px-2 py-1 text-right font-mono">{entry.stakedAmount.toLocaleString()}</td>
+                                  <td className="px-2 py-1 text-right">
+                                    <span className={entry.multiplier >= 5 ? "text-green-600 font-bold" : "text-[#000080]"}>
+                                      {entry.multiplier.toFixed(2)}x
+                                    </span>
+                                  </td>
+                                  <td className="px-2 py-1 text-right font-mono font-bold">{entry.weightedStake.toLocaleString()}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={fetchLeaderboard}
+                          className="mt-2 px-3 py-1 bg-[#c0c0c0] border-2 text-[10px] hover:bg-[#a0a0a0]"
+                          style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
+                        >
+                          🔄 Refresh
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Footer */}
               <div className="mt-4 pt-2 border-t-2 border-[#808080] text-xs text-gray-500 text-center">
