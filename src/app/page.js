@@ -52,13 +52,14 @@ export default function Home() {
     contract: { open: false, minimized: false, zIndex: 12 },
     memeGen: { open: false, minimized: false, zIndex: 9 },
   });
+  const [musicPlayerOpen, setMusicPlayerOpen] = useState(true);
   const [time, setTime] = useState("");
   const [topZ, setTopZ] = useState(12);
 
   const [desktopLayout, setDesktopLayout] = useState({
-    contract: { x: 1100, y: 60, width: 320, height: 150 },
-    agentChat: { x: 1000, y: 230, width: 450, height: 420 },
-    liveChat: { x: 20, y: 230, width: 340, height: 450 },
+    contract: { x: 780, y: 60, width: 280, height: 120 },
+    agentChat: { x: 680, y: 200, width: 380, height: 320 },
+    liveChat: { x: 60, y: 60, width: 300, height: 380 },
   });
 
   useEffect(() => {
@@ -263,11 +264,21 @@ export default function Home() {
             </div>
             <span className="desktop-icon-label">Meme Generator</span>
           </button>
+
+          <button
+            type="button"
+            className="desktop-icon"
+            onClick={isMobile ? () => setMusicPlayerOpen(true) : undefined}
+            onDoubleClick={!isMobile ? () => setMusicPlayerOpen(true) : undefined}
+          >
+            <div className="desktop-icon-img">🎵</div>
+            <span className="desktop-icon-label">Music</span>
+          </button>
         </div>
 
         {/* Music Player Widget */}
-        <div className="absolute bottom-12 left-4 z-50">
-          <MusicPlayer />
+        <div className="absolute bottom-14 right-4 z-50">
+          <MusicPlayer isOpen={musicPlayerOpen} onClose={() => setMusicPlayerOpen(false)} />
         </div>
 
         <DraggableWindow

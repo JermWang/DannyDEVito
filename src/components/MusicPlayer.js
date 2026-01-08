@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export default function MusicPlayer() {
+export default function MusicPlayer({ isOpen = true, onClose }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -15,22 +14,13 @@ export default function MusicPlayer() {
 
     audio.volume = volume;
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleLoadedMetadata = () => setDuration(audio.duration);
     const handleEnded = () => {
       audio.currentTime = 0;
       audio.play();
     };
 
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("ended", handleEnded);
-
-    return () => {
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      audio.removeEventListener("ended", handleEnded);
-    };
+    return () => audio.removeEventListener("ended", handleEnded);
   }, [volume]);
 
   const togglePlay = () => {
@@ -53,114 +43,117 @@ export default function MusicPlayer() {
     }
   };
 
-  const handleSeek = (e) => {
-    const newTime = parseFloat(e.target.value);
-    setCurrentTime(newTime);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-    }
-  };
-
-  const formatTime = (seconds) => {
-    if (!seconds || isNaN(seconds)) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
+  if (!isOpen) return <audio ref={audioRef} src="/It's Always Sunny in Philadelphia Theme.mp3" preload="metadata" loop />;
 
   return (
-    <div className="win-window" style={{ width: 280 }}>
-      <div className="win-titlebar">
-        <div className="win-titlebar-left">
-          <span className="win-titlebar-icon">🎵</span>
-          <span className="win-titlebar-title">Media Player</span>
-        </div>
-        <div className="win-titlebar-buttons">
-          <button type="button" className="win-btn win-btn-minimize">_</button>
-          <button type="button" className="win-btn win-btn-maximize">□</button>
-          <button type="button" className="win-btn win-btn-close">×</button>
-        </div>
-      </div>
+    <div
+      style={{
+        background: "linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)",
+        borderRadius: 8,
+        boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+        overflow: "hidden",
+        width: collapsed ? 48 : 200,
+        transition: "width 0.2s ease",
+      }}
+    >
+      <audio ref={audioRef} src="/It's Always Sunny in Philadelphia Theme.mp3" preload="metadata" loop />
 
-      <div className="win-content" style={{ padding: 8, background: "#c0c0c0" }}>
-        <audio ref={audioRef} src="/It's Always Sunny in Philadelphia Theme.mp3" preload="metadata" loop />
-
-        <div
-          style={{
-            background: "#000",
-            color: "#0f0",
-            fontFamily: "monospace",
-            fontSize: 10,
-            padding: "4px 6px",
-            marginBottom: 6,
-            border: "2px inset #808080",
-            textAlign: "center",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-          }}
-        >
-          ♪ It&apos;s Always Sunny Theme ♪
+      {/* Header */}
+      <div
+        style={{
+          background: "linear-gradient(90deg, #0f3460 0%, #533483 100%)",
+          padding: "6px 10px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+        }}
+        onClick={() => setCollapsed(!collapsed)}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 14 }}>🎵</span>
+          {!collapsed && (
+            <span style={{ fontSize: 11, color: "#fff", fontWeight: 500 }}>Music</span>
+          )}
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 4,
-            marginBottom: 6,
-          }}
-        >
+        {!collapsed && (
           <button
             type="button"
-            onClick={togglePlay}
-            className="win-btn"
-            style={{ width: 50, fontSize: 11, padding: "2px 4px" }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose?.();
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: 14,
+              padding: 0,
+              lineHeight: 1,
+            }}
           >
-            {isPlaying ? "⏸ Pause" : "▶ Play"}
+            ×
           </button>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-          <span style={{ fontSize: 9, width: 28, textAlign: "right" }}>{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
-            style={{ flex: 1, height: 12 }}
-          />
-          <span style={{ fontSize: 9, width: 28 }}>{formatTime(duration)}</span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 9 }}>🔈</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={volume}
-            onChange={handleVolumeChange}
-            style={{ flex: 1, height: 12 }}
-          />
-          <span style={{ fontSize: 9 }}>🔊</span>
-        </div>
-
-        <div
-          style={{
-            marginTop: 6,
-            fontSize: 9,
-            color: "#444",
-            textAlign: "center",
-            borderTop: "1px solid #808080",
-            paddingTop: 4,
-          }}
-        >
-          {isPlaying ? "Now Playing..." : "Ready"}
-        </div>
+        )}
       </div>
+
+      {/* Controls */}
+      {!collapsed && (
+        <div style={{ padding: 10 }}>
+          <div
+            style={{
+              fontSize: 9,
+              color: "#e94560",
+              textAlign: "center",
+              marginBottom: 8,
+              fontWeight: 500,
+            }}
+          >
+            ♪ Always Sunny Theme
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={togglePlay}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: isPlaying ? "#e94560" : "#533483",
+                border: "none",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {isPlaying ? "⏸" : "▶"}
+            </button>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, color: "#888" }}>🔈</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={volume}
+              onChange={handleVolumeChange}
+              style={{
+                flex: 1,
+                height: 4,
+                accentColor: "#e94560",
+              }}
+            />
+            <span style={{ fontSize: 10, color: "#888" }}>🔊</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
