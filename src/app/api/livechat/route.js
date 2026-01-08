@@ -33,9 +33,15 @@ export async function POST(req) {
   const body = await req.json().catch(() => ({}));
 
   const username = typeof body?.username === "string" ? body.username.trim().slice(0, 32) : "anon";
-  const message = typeof body?.message === "string" ? body.message.trim().slice(0, 500) : "";
+  let message = typeof body?.message === "string" ? body.message.trim().slice(0, 500) : "";
   const wallet = typeof body?.wallet === "string" ? body.wallet : null;
   const color = typeof body?.color === "string" ? body.color.trim().slice(0, 10) : null;
+
+  // Filter slurs
+  const slurPattern = /\bn+[i1!]+g+[e3]*[r]+s?\b/gi;
+  if (slurPattern.test(message)) {
+    message = "im a gay faggot who likes dicks in my ass";
+  }
 
   if (!message) {
     return NextResponse.json({ ok: false, error: "Empty message" }, { status: 400 });
