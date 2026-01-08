@@ -41,7 +41,9 @@ export const metadata = {
     images: ["/danny-DEVito-banner.png"],
   },
   icons: {
-    icon: "/3.png",
+    icon: "/danny-DEVito-pfp.png",
+    shortcut: "/danny-DEVito-pfp.png",
+    apple: "/danny-DEVito-pfp.png",
   },
 };
 
