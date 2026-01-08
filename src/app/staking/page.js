@@ -578,19 +578,19 @@ export default function StakingPage() {
                     </div>
                     <div className="bg-white p-2 border border-[#808080]">
                       <div className="font-bold">3 Days</div>
-                      <div className="text-[#000080]">1.25x</div>
+                      <div className="text-[#000080]">2.00x</div>
                     </div>
                     <div className="bg-white p-2 border border-[#808080]">
                       <div className="font-bold">7 Days</div>
-                      <div className="text-[#000080]">1.50x</div>
+                      <div className="text-[#000080]">3.00x</div>
                     </div>
                     <div className="bg-white p-2 border border-[#808080]">
                       <div className="font-bold">10 Days</div>
-                      <div className="text-[#000080]">1.75x</div>
+                      <div className="text-[#000080]">4.00x</div>
                     </div>
                     <div className="bg-white p-2 border border-[#808080]">
                       <div className="font-bold">14 Days</div>
-                      <div className="text-green-600">2.00x</div>
+                      <div className="text-green-600">5.00x</div>
                     </div>
                   </div>
                 </div>
