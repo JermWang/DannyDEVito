@@ -46,7 +46,7 @@ export default function MusicPlayer({ isOpen = true, onClose }) {
   if (!isOpen) return <audio ref={audioRef} src="/It's Always Sunny in Philadelphia Theme.mp3" preload="metadata" loop />;
 
   return (
-    <div className="win-window" style={{ width: 260 }}>
+    <div className="win-window" style={{ width: 280, overflow: "hidden" }}>
       <audio ref={audioRef} src="/It's Always Sunny in Philadelphia Theme.mp3" preload="metadata" loop />
 
       {/* Header */}
@@ -93,56 +93,60 @@ export default function MusicPlayer({ isOpen = true, onClose }) {
 
       {/* Controls */}
       {!collapsed && (
-        <div className="win-content" style={{ padding: 8, background: "#c0c0c0" }}>
+        <div className="win-content" style={{ padding: 6, background: "#c0c0c0", overflow: "hidden" }}>
           <div
-            style={{
-              background: "#fff",
-              color: "#000",
-              fontFamily: "monospace",
-              fontSize: 10,
-              padding: "4px 6px",
-              marginBottom: 6,
-              border: "2px inset #808080",
-              textAlign: "center",
-              overflow: "hidden",
-              whiteSpace: "nowrap",
-            }}
+            className="win-content-inner"
+            style={{ padding: 6, overflow: "hidden", color: "#000", display: "flex", flexDirection: "column", gap: 6 }}
           >
-            ♪ It&apos;s Always Sunny Theme ♪
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
-            <button type="button" onClick={togglePlay} className="win-btn" style={{ fontSize: 11, padding: "2px 6px" }}>
-              {isPlaying ? "⏸ Pause" : "▶ Play"}
-            </button>
-            <button
-              type="button"
-              className="win-btn"
-              style={{ fontSize: 11, padding: "2px 6px" }}
-              onClick={() => {
-                const a = audioRef.current;
-                if (!a) return;
-                a.pause();
-                a.currentTime = 0;
-                setIsPlaying(false);
+            <div
+              style={{
+                background: "#fff",
+                color: "#000",
+                fontFamily: "monospace",
+                fontSize: 10,
+                padding: "4px 6px",
+                border: "2px inset #808080",
+                textAlign: "center",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
               }}
             >
-              ⏹ Stop
-            </button>
-          </div>
+              ♪ It&apos;s Always Sunny Theme ♪
+            </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 10, color: "#000" }}>🔈</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={volume}
-              onChange={handleVolumeChange}
-              style={{ flex: 1, height: 12 }}
-            />
-            <span style={{ fontSize: 10, color: "#000" }}>🔊</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+              <button type="button" onClick={togglePlay} className="win-btn-action">
+                {isPlaying ? "Pause" : "Play"}
+              </button>
+              <button
+                type="button"
+                className="win-btn-action"
+                onClick={() => {
+                  const a = audioRef.current;
+                  if (!a) return;
+                  a.pause();
+                  a.currentTime = 0;
+                  setIsPlaying(false);
+                }}
+              >
+                Stop
+              </button>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 10, color: "#000", flex: "0 0 auto" }}>🔈</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={volume}
+                onChange={handleVolumeChange}
+                style={{ flex: "1 1 0%", minWidth: 0, height: 14, accentColor: "#000080" }}
+              />
+              <span style={{ fontSize: 10, color: "#000", flex: "0 0 auto" }}>🔊</span>
+            </div>
           </div>
         </div>
       )}
