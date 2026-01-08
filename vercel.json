@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/launch",
       "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/tweet",
-      "schedule": "0 18 * * *"
     }
   ]
 }
