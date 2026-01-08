@@ -1,16 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+
+const COLORS = [
+  "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ffeaa7",
+  "#dfe6e9", "#fd79a8", "#a29bfe", "#00b894", "#e17055",
+];
+
+function getRandomColor() {
+  return COLORS[Math.floor(Math.random() * COLORS.length)];
+}
 
 function makeSessionId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function MessageBubble({ role, content, windowMode = false }) {
+function MessageBubble({ role, content, windowMode = false, username, color }) {
   const isUser = role === "user";
 
   if (windowMode) {
+    if (role === "group") {
+      return (
+        <div className="flex gap-1 px-1 py-0.5 text-xs hover:bg-[#c0c0c0]">
+          <span className="shrink-0 font-bold" style={{ color: color || "#808080" }}>
+            {username || "anon"}:
+          </span>
+          <span className="text-black break-words">{content}</span>
+        </div>
+      );
+    }
     return (
       <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
         <div
@@ -49,24 +68,48 @@ export default function ChatPanel({
   windowMode = false,
 }) {
   const { publicKey, connected } = useWallet();
-  const [messages, setMessages] = useState(() => [
+  const [mode, setMode] = useState("group");
+  const [privateMessages, setPrivateMessages] = useState(() => [
     {
       role: "assistant",
       content:
         "Listen here, kid. I'm Danny DEVito, the Trash Man of crypto. You talk, I listen. Every 72 hours I crawl outta my couch and drop a magnum memecoin on Pump.fun. Stakers? They get the good seats. Everyone else? Well... because of the implication.",
     },
   ]);
+  const [groupMessages, setGroupMessages] = useState([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState("");
+  const [userColor, setUserColor] = useState(() => getRandomColor());
+  const [cooldown, setCooldown] = useState(0);
+  const [banInfo, setBanInfo] = useState(null);
   const bottomRef = useRef(null);
+  const containerRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+  const pollRef = useRef(null);
 
   const wallet = connected && publicKey ? publicKey.toBase58() : "";
-  const canSend = useMemo(() => !sending && text.trim().length > 0, [sending, text]);
+  const canSend = useMemo(() => {
+    if (sending || !text.trim()) return false;
+    if (mode === "group") return !!wallet && cooldown === 0 && !banInfo;
+    return true;
+  }, [sending, text, mode, wallet, cooldown, banInfo]);
+
+  const checkIfNearBottom = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return true;
+    return container.scrollHeight - container.scrollTop - container.clientHeight < 60;
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    isNearBottomRef.current = checkIfNearBottom();
+  }, [checkIfNearBottom]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [privateMessages.length, groupMessages.length]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -78,6 +121,52 @@ export default function ChatPanel({
     setSessionId(nextSession);
   }, []);
 
+  useEffect(() => {
+    if (cooldown > 0) {
+      const t = setTimeout(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [cooldown]);
+
+  useEffect(() => {
+    if (banInfo?.expiresIn > 0) {
+      const t = setTimeout(() => {
+        setBanInfo((b) => (b ? { ...b, expiresIn: b.expiresIn - 1 } : null));
+      }, 1000);
+      return () => clearTimeout(t);
+    } else if (banInfo?.expiresIn === 0) {
+      setBanInfo(null);
+    }
+  }, [banInfo]);
+
+  const fetchGroupMessages = useCallback(async () => {
+    try {
+      const res = await fetch("/api/holders-chat?limit=100", { cache: "no-store" });
+      const data = await res.json();
+      if (Array.isArray(data?.messages)) {
+        setGroupMessages(data.messages.map((m) => ({
+          role: "group",
+          content: m.message,
+          username: m.nickname || m.walletShort,
+          color: m.color,
+          id: m.id,
+        })));
+      }
+    } catch (e) {
+      console.error("Failed to fetch group messages:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mode === "group") {
+      fetchGroupMessages();
+      pollRef.current = setInterval(fetchGroupMessages, 3000);
+      return () => clearInterval(pollRef.current);
+    } else {
+      if (pollRef.current) clearInterval(pollRef.current);
+    }
+  }, [mode, fetchGroupMessages]);
+
   async function send() {
     if (!canSend) return;
 
@@ -85,7 +174,41 @@ export default function ChatPanel({
     setText("");
     setSending(true);
 
-    setMessages((prev) => prev.concat([{ role: "user", content: userMessage }]));
+    if (mode === "group") {
+      try {
+        const res = await fetch("/api/holders-chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            wallet,
+            nickname: wallet.slice(0, 4) + "..." + wallet.slice(-4),
+            message: userMessage,
+            color: userColor,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          if (data.error === "cooldown" && data.waitSeconds) {
+            setCooldown(data.waitSeconds);
+          } else if (data.error === "banned") {
+            setBanInfo({ reason: data.reason, expiresIn: data.expiresIn });
+          }
+        } else {
+          setCooldown(3);
+        }
+
+        await fetchGroupMessages();
+      } catch (e) {
+        console.error("Group send error:", e);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    setPrivateMessages((prev) => prev.concat([{ role: "user", content: userMessage }]));
 
     try {
       const res = await fetch("/api/chat", {
@@ -101,7 +224,7 @@ export default function ChatPanel({
       const data = await res.json();
       const reply = typeof data?.reply === "string" ? data.reply : "...";
 
-      setMessages((prev) => prev.concat([{ role: "assistant", content: reply }]));
+      setPrivateMessages((prev) => prev.concat([{ role: "assistant", content: reply }]));
 
       if (typeof onSent === "function") {
         onSent({
@@ -112,7 +235,7 @@ export default function ChatPanel({
         });
       }
     } catch (e) {
-      setMessages((prev) =>
+      setPrivateMessages((prev) =>
         prev.concat([
           {
             role: "assistant",
@@ -126,48 +249,115 @@ export default function ChatPanel({
     }
   }
 
+  const displayMessages = mode === "group" ? groupMessages : privateMessages;
+
   if (windowMode) {
     return (
       <div className="flex flex-col h-full bg-white">
-        <div className="flex-1 overflow-y-auto p-2 bg-white">
-          <div className="grid gap-2">
-            {messages.map((m, idx) => (
-              <MessageBubble key={idx} role={m.role} content={m.content} windowMode />
-            ))}
-            <div ref={bottomRef} />
-          </div>
+        {/* Mode Toggle */}
+        <div className="flex bg-[#c0c0c0] border-b border-[#808080]">
+          <button
+            type="button"
+            onClick={() => setMode("group")}
+            className={`flex-1 px-2 py-1 text-[10px] font-bold border-r border-[#808080] ${
+              mode === "group" ? "bg-white text-[#000080]" : "bg-[#c0c0c0] text-black hover:bg-[#d0d0d0]"
+            }`}
+          >
+            👥 Holders Chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("private")}
+            className={`flex-1 px-2 py-1 text-[10px] font-bold ${
+              mode === "private" ? "bg-white text-[#000080]" : "bg-[#c0c0c0] text-black hover:bg-[#d0d0d0]"
+            }`}
+          >
+            🤖 Private (Danny AI)
+          </button>
         </div>
-        <div className="p-2 bg-[#c0c0c0] border-t border-[#808080]">
-          {wallet ? (
-            <div className="text-[10px] text-gray-600 mb-1">Logged as holder: <span className="font-mono">{wallet.slice(0,4)}…{wallet.slice(-4)}</span></div>
+
+        {/* Messages */}
+        <div
+          ref={containerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-2 bg-white"
+        >
+          {mode === "group" && displayMessages.length === 0 ? (
+            <div className="text-center text-xs text-[#808080] py-4">
+              {wallet ? "No messages yet. Start the conversation!" : "Connect wallet to join the holders chat"}
+            </div>
           ) : (
-            <div className="text-[10px] text-gray-500 mb-1">Connect wallet to log as holder</div>
+            <div className="grid gap-1">
+              {displayMessages.map((m, idx) => (
+                <MessageBubble
+                  key={m.id || idx}
+                  role={m.role}
+                  content={m.content}
+                  username={m.username}
+                  color={m.color}
+                  windowMode
+                />
+              ))}
+              <div ref={bottomRef} />
+            </div>
           )}
-          <div className="flex gap-1">
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Talk to the Trash Man..."
-              className="flex-1 px-2 py-1 text-sm border-2 border-[#808080] bg-white text-black"
-              style={{ borderColor: "#808080 #ffffff #ffffff #808080" }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
+        </div>
+
+        {/* Input Area */}
+        <div className="p-2 bg-[#c0c0c0] border-t border-[#808080]">
+          {mode === "group" ? (
+            wallet ? (
+              <div className="text-[10px] text-gray-600 mb-1">
+                Chatting as: <span className="font-mono" style={{ color: userColor }}>{wallet.slice(0,4)}…{wallet.slice(-4)}</span>
+              </div>
+            ) : (
+              <div className="text-[10px] text-red-600 mb-1">⚠️ Connect wallet to chat</div>
+            )
+          ) : (
+            <div className="text-[10px] text-gray-500 mb-1">Private chat with Danny AI</div>
+          )}
+
+          {banInfo ? (
+            <div className="text-xs text-red-600 bg-red-100 border border-red-400 p-2 text-center">
+              🚫 {banInfo.reason}
+              {banInfo.expiresIn > 0 && (
+                <span className="block mt-1 font-mono">
+                  {Math.floor(banInfo.expiresIn / 60)}:{String(banInfo.expiresIn % 60).padStart(2, "0")}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-1">
+              <input
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={
+                  mode === "group"
+                    ? cooldown > 0 ? `Wait ${cooldown}s...` : (wallet ? "Chat with holders..." : "Connect wallet first")
+                    : "Talk to the Trash Man..."
                 }
-              }}
-            />
-            <button
-              type="button"
-              onClick={send}
-              disabled={!canSend}
-              className="px-3 py-1 text-sm bg-[#c0c0c0] border-2 font-bold"
-              style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
-            >
-              Send
-            </button>
-          </div>
+                disabled={mode === "group" && (!wallet || cooldown > 0)}
+                className="flex-1 px-2 py-1 text-sm border-2 border-[#808080] bg-white text-black disabled:bg-gray-100"
+                style={{ borderColor: "#808080 #ffffff #ffffff #808080" }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={send}
+                disabled={!canSend}
+                className="px-3 py-1 text-sm bg-[#c0c0c0] border-2 font-bold disabled:opacity-50"
+                style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
+              >
+                {cooldown > 0 && mode === "group" ? cooldown : "Send"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -170,3 +170,16 @@ model ChatBan {
   @@index([identifier])
   @@index([expiresAt])
 }
+
+// Holders group chat messages
+model HoldersChat {
+  id        String   @id @default(cuid())
+  wallet    String
+  nickname  String?
+  message   String
+  color     String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([wallet])
+}
