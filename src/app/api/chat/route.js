@@ -1,83 +1,9 @@
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getHolderStatus } from "@/lib/holderGate";
-
-function pick(items) {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-let cachedProfile = null;
-
-async function loadPersonalityProfile() {
-  if (cachedProfile) return cachedProfile;
-
-  const rel = process.env.AGENT_PROFILE_PATH || "docs/danny_devito_personality.json";
-  const filePath = path.join(process.cwd(), rel);
-
-  try {
-    const raw = await fs.readFile(filePath, "utf8");
-    cachedProfile = JSON.parse(raw);
-  } catch {
-    cachedProfile = null;
-  }
-
-  return cachedProfile;
-}
-
-function normalizePhrases(profile) {
-  const phrases =
-    profile?.character_profile?.mannerisms_speech_patterns?.key_phrases || [];
-
-  if (!Array.isArray(phrases)) return [];
-
-  const blocked = /(rug|drain|scam|grift|steal|fraud)/i;
-  return phrases
-    .map((p) => (typeof p === "string" ? p : ""))
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .filter((p) => !blocked.test(p));
-}
-
-function buildParodyReply(userText, phrases) {
-  const openers = [
-    "Alright listen—",
-    "Lemme tell ya something—",
-    "Okay. Okay. Hear me out—",
-    "Buddy, pal—",
-    "This is beautiful chaos—",
-  ];
-
-  const vibes = [
-    "we make it small, loud, and unforgettable.",
-    "we turn that into a coin and a problem for tomorrow.",
-    "that idea’s got teeth. I respect it.",
-    "I’m not saying it’s smart. I’m saying it’s destiny.",
-    "I can smell the pump from here.",
-  ];
-
-  const callbacks = [
-    "Now give me a name. Something that sounds like trouble.",
-    "Hit me with a ticker—four letters, maximum mischief.",
-    "Tell me the vibe: cute, cursed, or criminally handsome?",
-    "Give me one phrase holders would chant at 3AM.",
-    "What’s the one-liner on the meme image?",
-  ];
-
-  const sanitized = (userText || "").toString().slice(0, 280);
-  const hasTicker = /\$?[A-Z]{3,6}/.test(sanitized);
-
-  const extra = hasTicker
-    ? "That ticker? Disgusting. Perfect."
-    : "No ticker yet? We’re practically naked.";
-
-  const flavor = Array.isArray(phrases) && phrases.length > 0 ? ` ${pick(phrases)}` : "";
-
-  return `${pick(openers)}${extra} ${pick(vibes)}${flavor} ${pick(callbacks)}`;
-}
+import { generateDannyResponse } from "@/lib/dannyAgent";
 
 export async function GET(req) {
   const url = new URL(req.url);
@@ -146,9 +72,15 @@ export async function POST(req) {
     }
   }
 
-  const profile = await loadPersonalityProfile();
-  const phrases = normalizePhrases(profile);
-  const reply = buildParodyReply(message, phrases);
+  // Get conversation history for context
+  const history = await prisma.dannyChat.findMany({
+    where: { sessionId },
+    orderBy: { createdAt: "asc" },
+    take: 10,
+  });
+
+  // Generate AI response using OpenAI
+  const reply = await generateDannyResponse(message, history);
 
   const now = new Date();
 
