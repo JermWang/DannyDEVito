@@ -117,7 +117,7 @@ export default function Home() {
       memeGen: { ...prev.memeGen, open: false, zIndex: 9 },
       liveChat: { ...prev.liveChat, open: false, zIndex: 10 },
       agentChat: { ...prev.agentChat, open: false, zIndex: 11 },
-      contract: { ...prev.contract, open: false, zIndex: 12 },
+      contract: { ...prev.contract, open: true, zIndex: 12 },
     }));
   }, [isMobile]);
 
