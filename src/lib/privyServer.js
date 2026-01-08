@@ -141,7 +141,9 @@ function signPrivyRequest({ method, url, appId, body, idempotencyKey }) {
 }
 
 function mustGetPrivyCreds() {
-  const appId = String(process.env.PRIVY_APP_ID ?? "").trim();
+  const appId =
+    String(process.env.PRIVY_APP_ID ?? "").trim() ||
+    String(process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "").trim();
   const appSecret = String(process.env.PRIVY_APP_SECRET ?? "").trim();
   if (!appId || !appSecret) {
     throw new Error("PRIVY_APP_ID and PRIVY_APP_SECRET are required");
