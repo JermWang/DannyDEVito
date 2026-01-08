@@ -582,14 +582,32 @@ export default function StakingPage() {
 
           {/* Ad Sidebar */}
           <div className="hidden lg:block w-48 flex-shrink-0">
-            <div className="bg-[#c0c0c0] border-2 h-full" style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}>
+            <div className="bg-[#c0c0c0] border-2 h-full flex flex-col" style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}>
               <div className="bg-[#000080] text-white text-[10px] px-2 py-1 text-center font-bold">
                 ADVERTISEMENT
               </div>
-              <div className="p-1 flex flex-col items-center">
+              <div className="p-1 flex flex-col items-center flex-1">
+                {/* Spammy top section */}
+                <div className="w-full mb-1 p-1 bg-[#FF0000] text-white text-[8px] text-center font-bold animate-pulse">
+                  🚨 YOU ARE THE 1,000,000th VISITOR! 🚨
+                </div>
+                <div className="w-full mb-1 p-1 bg-[#00FF00] text-black text-[7px] text-center font-bold">
+                  ⚠️ YOUR COMPUTER HAS 47 VIRUSES ⚠️
+                </div>
+                <div className="w-full mb-1 p-1 bg-[#FFFF00] text-black text-[7px] text-center">
+                  <marquee scrollamount="2">💰 SINGLE MOMS IN YOUR AREA WANT TO TRADE CRYPTO 💰</marquee>
+                </div>
+                <div className="w-full mb-1 p-1 bg-[#FF00FF] text-white text-[7px] text-center font-bold">
+                  🎰 CLICK HERE TO CLAIM FREE $DEVITO 🎰
+                </div>
+                <div className="w-full mb-2 p-1 bg-black text-[#00FF00] text-[7px] text-center font-mono">
+                  &gt;&gt; DOWNLOAD MORE RAM &lt;&lt;
+                </div>
+
+                {/* Main ad image - centered */}
                 <a 
                   href="/" 
-                  className="block hover:opacity-90 transition-opacity"
+                  className="block hover:opacity-90 transition-opacity my-auto"
                   title="Click here for the 1 weird trick!"
                 >
                   <img 
@@ -599,14 +617,16 @@ export default function StakingPage() {
                     style={{ imageRendering: "auto" }}
                   />
                 </a>
-                <div className="text-[8px] text-gray-500 mt-1 text-center">
+
+                {/* Bottom section */}
+                <div className="text-[8px] text-black mt-1 text-center">
                   [SPONSORED]
                 </div>
-                <div className="mt-2 p-2 bg-[#FFFFCC] border border-[#808080] text-[9px] text-center">
+                <div className="mt-1 p-2 bg-[#FFFFCC] border border-[#808080] text-[9px] text-center">
                   <div className="font-bold text-red-600 animate-pulse">🔥 HOT TIP 🔥</div>
-                  <div className="mt-1">Doctors HATE this one weird trick to grow your bag!</div>
+                  <div className="mt-1 text-black">Doctors HATE this one weird trick to grow your bag!</div>
                 </div>
-                <div className="mt-2 text-[8px] text-center text-gray-600">
+                <div className="mt-1 text-[8px] text-center text-black">
                   <div>👆 Click ad 👆</div>
                   <div>to support Danny</div>
                 </div>
