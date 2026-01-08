@@ -155,10 +155,10 @@ export default function StakingPage() {
       <div className="absolute inset-0 bg-[#008080]" />
 
       {/* Desktop area */}
-      <div className="absolute inset-0 pb-7">
-        <div className="h-full p-2 flex gap-2">
+      <div className="absolute inset-0 pb-7 md:pb-7 pb-9">
+        <div className="h-full p-2 flex gap-2 max-md:flex-col max-md:gap-0 max-md:p-0">
           {/* IE Browser Window - Main Content */}
-          <div className="flex-1">
+          <div className="flex-1 max-md:h-full">
             <IEBrowser 
               title="Staking - Earn Allocations" 
               url="http://dannydevito.fun/staking"

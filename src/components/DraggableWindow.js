@@ -2,6 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  
+  return isMobile;
+}
+
 export default function DraggableWindow({
   title = "Window",
   icon = null,
@@ -14,7 +27,9 @@ export default function DraggableWindow({
   onMinimize,
   zIndex = 10,
   onFocus,
+  mobileFullscreen = true,
 }) {
+  const isMobile = useIsMobile();
   const [position, setPosition] = useState(defaultPosition);
   const [size, setSize] = useState(defaultSize);
   const [isDragging, setIsDragging] = useState(false);
@@ -111,19 +126,31 @@ export default function DraggableWindow({
 
   if (!isOpen) return null;
 
+  // Mobile: fullscreen mode
+  const mobileStyles = isMobile && mobileFullscreen ? {
+    position: "fixed",
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 36,
+    width: "100%",
+    height: "auto",
+    zIndex,
+  } : {
+    position: "absolute",
+    left: position.x,
+    top: position.y,
+    width: size.width,
+    height: isMinimized ? "auto" : size.height,
+    zIndex,
+    userSelect: isDragging || isResizing ? "none" : "auto",
+  };
+
   return (
     <div
       ref={windowRef}
-      className="win-window"
-      style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        width: size.width,
-        height: isMinimized ? "auto" : size.height,
-        zIndex,
-        userSelect: isDragging || isResizing ? "none" : "auto",
-      }}
+      className={`win-window ${isMobile && mobileFullscreen ? "mobile-fullscreen" : ""}`}
+      style={mobileStyles}
       onMouseDown={onFocus}
     >
       {/* Title bar */}
@@ -165,8 +192,8 @@ export default function DraggableWindow({
         </div>
       )}
 
-      {/* Resize handles - all corners and edges */}
-      {!isMinimized && (
+      {/* Resize handles - all corners and edges (desktop only) */}
+      {!isMinimized && !isMobile && (
         <>
           {/* Corner handles */}
           <div

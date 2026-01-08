@@ -131,8 +131,8 @@ export default function ChatLogsPage() {
     <div className="relative h-screen w-screen overflow-hidden">
       <div className="absolute inset-0 bg-[#008080]" />
 
-      <div className="absolute inset-0 pb-7">
-        <div className="h-full p-2">
+      <div className="absolute inset-0 pb-7 md:pb-7 pb-9">
+        <div className="h-full p-2 max-md:p-0">
           <IEBrowser
             title="Holder Chat Logs"
             url="http://dannydevito.fun/chat-logs"

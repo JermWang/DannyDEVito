@@ -125,9 +125,9 @@ export default function VaultPage() {
       <div className="absolute inset-0 bg-[#008080]" />
 
       {/* Desktop area */}
-      <div className="absolute inset-0 pb-7">
+      <div className="absolute inset-0 pb-7 md:pb-7 pb-9">
         {/* IE Browser Window */}
-        <div className="h-full p-2">
+        <div className="h-full p-2 max-md:p-0">
           <IEBrowser 
             title="Vault - Launch History" 
             url="http://dannydevito.fun/vault"

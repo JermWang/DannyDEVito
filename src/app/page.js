@@ -31,11 +31,23 @@ function PhantomIcon({ className = "w-7 h-7" }) {
   );
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 export default function Home() {
+  const isMobile = useIsMobile();
   const [windows, setWindows] = useState({
     wallet: { open: false, minimized: false, zIndex: 8 },
     agentChat: { open: true, minimized: false, zIndex: 10 },
-    liveChat: { open: true, minimized: false, zIndex: 11 },
+    liveChat: { open: false, minimized: false, zIndex: 11 },
     memeGen: { open: false, minimized: false, zIndex: 9 },
   });
   const [time, setTime] = useState("");
@@ -90,13 +102,14 @@ export default function Home() {
       </video>
 
       {/* Desktop area */}
-      <div className="absolute inset-0 pb-7">
-        {/* Desktop icons */}
-        <div className="flex flex-col gap-2 p-4">
+      <div className="absolute inset-0 pb-7 md:pb-7 pb-9">
+        {/* Desktop icons - grid on mobile, column on desktop */}
+        <div className="flex flex-col gap-2 p-4 md:flex-col md:gap-2 max-md:grid max-md:grid-cols-4 max-md:gap-1 max-md:p-2">
           <button
             type="button"
             className="desktop-icon"
-            onDoubleClick={() => toggleWindow("wallet")}
+            onClick={isMobile ? () => toggleWindow("wallet") : undefined}
+            onDoubleClick={!isMobile ? () => toggleWindow("wallet") : undefined}
           >
             <div className="desktop-icon-img">
               <PhantomIcon />
@@ -107,7 +120,8 @@ export default function Home() {
           <button
             type="button"
             className="desktop-icon"
-            onDoubleClick={() => toggleWindow("agentChat")}
+            onClick={isMobile ? () => toggleWindow("agentChat") : undefined}
+            onDoubleClick={!isMobile ? () => toggleWindow("agentChat") : undefined}
           >
             <div className="desktop-icon-img">💬</div>
             <span className="desktop-icon-label">Agent Chat</span>
@@ -116,7 +130,8 @@ export default function Home() {
           <button
             type="button"
             className="desktop-icon"
-            onDoubleClick={() => toggleWindow("liveChat")}
+            onClick={isMobile ? () => toggleWindow("liveChat") : undefined}
+            onDoubleClick={!isMobile ? () => toggleWindow("liveChat") : undefined}
           >
             <div className="desktop-icon-img">🌐</div>
             <span className="desktop-icon-label">Live Chat</span>
@@ -182,7 +197,8 @@ export default function Home() {
           <button
             type="button"
             className="desktop-icon"
-            onDoubleClick={() => toggleWindow("memeGen")}
+            onClick={isMobile ? () => toggleWindow("memeGen") : undefined}
+            onDoubleClick={!isMobile ? () => toggleWindow("memeGen") : undefined}
           >
             <div className="desktop-icon-img">
               <img src="/danny-decheeto.png" alt="" className="w-8 h-8 object-contain" />

@@ -161,16 +161,16 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-screen overflow-auto bg-[#008080]">
-      <div className="p-4 max-w-6xl mx-auto">
+    <div className="relative min-h-screen w-screen overflow-auto bg-[#008080] pb-10">
+      <div className="p-4 max-w-6xl mx-auto max-md:p-2">
         <div className="bg-[#c0c0c0] border-2 border-white border-r-[#808080] border-b-[#808080] p-4 mb-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
             <h1 className="text-xl font-bold text-black flex items-center gap-2">
-              <img src="/DEVito.png" alt="" className="h-8" />
-              Danny DEVito Admin Panel
+              <img src="/DEVito.png" alt="" className="h-8 max-md:h-6" />
+              <span className="max-md:text-base">Danny DEVito Admin Panel</span>
             </h1>
-            <div className="flex items-center gap-2">
-              <Link href="/" className="px-3 py-1 bg-[#c0c0c0] border-2 text-sm text-black" style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link href="/" className="px-3 py-1 bg-[#c0c0c0] border-2 text-sm text-black max-md:text-xs" style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}>
                 ← Home
               </Link>
               <WalletMultiButton />
