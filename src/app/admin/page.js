@@ -160,6 +160,17 @@ export default function AdminPage() {
     }
   }
 
+  async function handleSweep() {
+    const result = await signAndCall("treasury_sweep", "/api/admin/treasury", {
+      action: "sweep",
+    });
+
+    if (result) {
+      setSuccess(`Swept ${result.amountSol} SOL to profit wallet! TX: ${result.signature?.slice(0, 12)}...`);
+      fetchTreasury();
+    }
+  }
+
   return (
     <div className="relative min-h-screen w-screen overflow-auto bg-[#008080] pb-10">
       <div className="p-4 max-w-6xl mx-auto max-md:p-2">
@@ -206,7 +217,22 @@ export default function AdminPage() {
                   <div><strong>Balance:</strong> {treasury.balanceSol} SOL ({treasury.balanceLamports.toLocaleString()} lamports)</div>
                   
                   <div className="border-t border-[#808080] pt-2 mt-2">
-                    <div className="font-bold mb-1">Withdraw SOL</div>
+                    <div className="font-bold mb-1 text-green-700">💰 Sweep Profits to Phantom</div>
+                    <p className="text-[10px] text-gray-600 mb-2">
+                      Sends all SOL (minus 0.01 SOL rent reserve) to your configured profit wallet.
+                    </p>
+                    <button
+                      onClick={handleSweep}
+                      disabled={loading || !connected || !treasury?.balanceLamports || treasury.balanceLamports <= 10_000_000}
+                      className="px-4 py-2 bg-[#00AA00] border-2 text-xs font-bold text-white disabled:opacity-50 w-full"
+                      style={{ borderColor: "#00FF00 #006600 #006600 #00FF00" }}
+                    >
+                      {loading ? "Sweeping..." : `🧹 Sweep ${Math.max(0, (treasury?.balanceSol || 0) - 0.01).toFixed(4)} SOL to Profit Wallet`}
+                    </button>
+                  </div>
+
+                  <div className="border-t border-[#808080] pt-2 mt-2">
+                    <div className="font-bold mb-1">Manual Withdraw (Advanced)</div>
                     <input
                       type="text"
                       placeholder="Destination wallet"

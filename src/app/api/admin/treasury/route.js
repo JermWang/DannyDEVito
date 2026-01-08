@@ -118,6 +118,63 @@ export async function POST(req) {
       });
     }
 
+    if (action === "sweep") {
+      const profitWalletPubkey = String(process.env.PROFIT_WALLET_PUBKEY ?? "").trim();
+      if (!profitWalletPubkey) {
+        return NextResponse.json({ ok: false, error: "profit_wallet_not_configured" }, { status: 500 });
+      }
+
+      let destPubkey;
+      try {
+        destPubkey = new PublicKey(profitWalletPubkey);
+      } catch {
+        return NextResponse.json({ ok: false, error: "invalid_profit_wallet_pubkey" }, { status: 500 });
+      }
+
+      const currentBalance = await getWalletBalance(treasuryPubkey);
+      const RENT_RESERVE_LAMPORTS = 10_000_000;
+      const sweepAmount = currentBalance - RENT_RESERVE_LAMPORTS;
+
+      if (sweepAmount <= 0) {
+        return NextResponse.json({ 
+          ok: false, 
+          error: "insufficient_balance", 
+          message: `Balance ${currentBalance} lamports is below rent reserve (${RENT_RESERVE_LAMPORTS} lamports)` 
+        }, { status: 400 });
+      }
+
+      const result = await privyTransferLamports({
+        walletId: treasuryWalletId,
+        fromPubkey: treasuryPubkey,
+        toPubkey: destPubkey,
+        lamports: sweepAmount,
+        caip2: getSolanaCaip2(),
+      });
+
+      if (!result.ok) {
+        return NextResponse.json({ ok: false, error: result.error }, { status: 500 });
+      }
+
+      console.log("[Admin Treasury] Sweep to profit wallet:", {
+        from: treasuryInfo.address,
+        to: profitWalletPubkey,
+        amountLamports: sweepAmount,
+        signature: result.signature,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        action: "sweep",
+        signature: result.signature,
+        explorerUrl: `https://solscan.io/tx/${encodeURIComponent(result.signature)}`,
+        from: treasuryInfo.address,
+        to: profitWalletPubkey,
+        amountLamports: sweepAmount,
+        amountSol: sweepAmount / 1_000_000_000,
+        rentReserveKept: RENT_RESERVE_LAMPORTS,
+      });
+    }
+
     return NextResponse.json({ ok: false, error: "unknown_action" }, { status: 400 });
   } catch (e) {
     console.error("[Admin Treasury POST] Error:", e?.message || e);
