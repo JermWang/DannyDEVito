@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // User's connected wallet linked to their Privy escrow wallet
@@ -87,4 +88,29 @@ model Allocation {
   
   @@unique([accountId, launchId])
   @@index([launchId])
+}
+
+// Live chat messages
+model ChatMessage {
+  id        String   @id @default(cuid())
+  wallet    String?  // User's wallet address (null for anonymous)
+  nickname  String?  // Display name
+  message   String
+  createdAt DateTime @default(now())
+  
+  @@index([createdAt])
+  @@index([wallet])
+}
+
+// Danny AI chat history (private conversations)
+model DannyChat {
+  id        String   @id @default(cuid())
+  sessionId String   // Browser session ID
+  wallet    String?  // User's wallet if connected
+  role      String   // "user" or "assistant"
+  content   String
+  createdAt DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([wallet])
 }

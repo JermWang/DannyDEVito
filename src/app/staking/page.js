@@ -35,11 +35,26 @@ export default function StakingPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [escrowWallet, setEscrowWallet] = useState(null);
+  const [history, setHistory] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   const canQuery = useMemo(() => wallet.trim().length > 10, [wallet]);
   
   // Check if user has initialized their escrow wallet
   const hasEscrow = summary?.escrowWallet || escrowWallet;
+
+  async function fetchHistory() {
+    if (!canQuery) return;
+    try {
+      const res = await fetch(`/api/staking/history?wallet=${encodeURIComponent(wallet)}`);
+      const data = await res.json();
+      if (data.ok) {
+        setHistory(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch history:", e);
+    }
+  }
 
   async function refresh() {
     if (!canQuery) return;
@@ -132,14 +147,15 @@ export default function StakingPage() {
 
       {/* Desktop area */}
       <div className="absolute inset-0 pb-7">
-        {/* IE Browser Window */}
-        <div className="h-full p-2">
-          <IEBrowser 
-            title="Staking - Earn Allocations" 
-            url="http://dannydevito.fun/staking"
-            onRefresh={refresh}
-          >
-            <div className="p-4 font-sans text-sm text-black bg-white">
+        <div className="h-full p-2 flex gap-2">
+          {/* IE Browser Window - Main Content */}
+          <div className="flex-1">
+            <IEBrowser 
+              title="Staking - Earn Allocations" 
+              url="http://dannydevito.fun/staking"
+              onRefresh={refresh}
+            >
+              <div className="p-4 font-sans text-sm text-black bg-white">
               {/* Page header */}
               <div className="border-b-2 border-[#000080] pb-2 mb-4">
                 <h1 className="text-2xl font-bold text-[#000080] flex items-center gap-2">
@@ -411,12 +427,179 @@ export default function StakingPage() {
                 </div>
               </div>
 
+              {/* Transaction History Dashboard */}
+              {canQuery && (
+                <div className="border-2 border-[#808080] mb-4">
+                  <div 
+                    className="bg-[#000080] text-white px-3 py-1 font-bold text-sm flex justify-between items-center cursor-pointer"
+                    onClick={() => { setShowHistory(!showHistory); if (!history) fetchHistory(); }}
+                  >
+                    <span>📊 Transaction History Dashboard</span>
+                    <span>{showHistory ? "▼" : "▶"}</span>
+                  </div>
+                  {showHistory && (
+                    <div className="bg-white p-3 text-xs">
+                      {!history ? (
+                        <div className="text-center py-4 text-gray-500">Loading history...</div>
+                      ) : (
+                        <>
+                          {/* Summary Stats */}
+                          <div className="grid grid-cols-4 gap-2 mb-4">
+                            <div className="bg-[#E8E8FF] p-2 border border-[#808080] text-center">
+                              <div className="text-[10px] text-gray-600">Total Staked</div>
+                              <div className="font-bold text-[#000080]">{history.summary?.totalStaked?.toFixed(2) || 0}</div>
+                            </div>
+                            <div className="bg-[#E8E8FF] p-2 border border-[#808080] text-center">
+                              <div className="text-[10px] text-gray-600">Total Unstaked</div>
+                              <div className="font-bold text-[#000080]">{history.summary?.totalUnstaked?.toFixed(2) || 0}</div>
+                            </div>
+                            <div className="bg-[#E8FFE8] p-2 border border-[#808080] text-center">
+                              <div className="text-[10px] text-gray-600">Current Stake</div>
+                              <div className="font-bold text-green-600">{history.summary?.currentStake?.toFixed(2) || 0}</div>
+                            </div>
+                            <div className="bg-[#FFFFCC] p-2 border border-[#808080] text-center">
+                              <div className="text-[10px] text-gray-600">Allocations</div>
+                              <div className="font-bold">{history.summary?.claimedAllocations || 0}/{history.summary?.totalAllocations || 0}</div>
+                            </div>
+                          </div>
+
+                          {/* Transaction List */}
+                          <div className="mb-3">
+                            <div className="font-bold mb-1 text-[#000080]">Recent Transactions</div>
+                            {history.transactions?.length > 0 ? (
+                              <div className="max-h-32 overflow-y-auto border border-[#808080]">
+                                <table className="w-full text-[10px]">
+                                  <thead className="bg-[#c0c0c0] sticky top-0">
+                                    <tr>
+                                      <th className="px-2 py-1 text-left">Date</th>
+                                      <th className="px-2 py-1 text-left">Action</th>
+                                      <th className="px-2 py-1 text-right">Amount</th>
+                                      <th className="px-2 py-1 text-left">TX</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {history.transactions.map((tx) => (
+                                      <tr key={tx.id} className="border-t border-[#c0c0c0] hover:bg-[#E8E8FF]">
+                                        <td className="px-2 py-1">{new Date(tx.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-2 py-1">
+                                          <span className={`px-1 rounded ${
+                                            tx.action === "stake" ? "bg-green-200 text-green-800" :
+                                            tx.action === "request_unstake" ? "bg-yellow-200 text-yellow-800" :
+                                            "bg-blue-200 text-blue-800"
+                                          }`}>
+                                            {tx.action}
+                                          </span>
+                                        </td>
+                                        <td className="px-2 py-1 text-right font-mono">{tx.amount.toFixed(2)}</td>
+                                        <td className="px-2 py-1 font-mono truncate max-w-[80px]">
+                                          {tx.txSignature ? tx.txSignature.slice(0, 8) + "..." : "—"}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="text-gray-500 text-center py-2 border border-[#808080]">No transactions yet</div>
+                            )}
+                          </div>
+
+                          {/* Allocations List */}
+                          <div>
+                            <div className="font-bold mb-1 text-[#000080]">Launch Allocations</div>
+                            {history.allocations?.length > 0 ? (
+                              <div className="max-h-32 overflow-y-auto border border-[#808080]">
+                                <table className="w-full text-[10px]">
+                                  <thead className="bg-[#c0c0c0] sticky top-0">
+                                    <tr>
+                                      <th className="px-2 py-1 text-left">Launch</th>
+                                      <th className="px-2 py-1 text-right">Tokens</th>
+                                      <th className="px-2 py-1 text-right">Share</th>
+                                      <th className="px-2 py-1 text-center">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {history.allocations.map((a) => (
+                                      <tr key={a.id} className="border-t border-[#c0c0c0] hover:bg-[#E8E8FF]">
+                                        <td className="px-2 py-1">
+                                          <span className="font-bold">{a.launchName}</span>
+                                          <span className="text-[#000080] ml-1">${a.ticker}</span>
+                                        </td>
+                                        <td className="px-2 py-1 text-right font-mono">{a.tokenAmount.toFixed(2)}</td>
+                                        <td className="px-2 py-1 text-right">{(a.sharePercent * 100).toFixed(4)}%</td>
+                                        <td className="px-2 py-1 text-center">
+                                          {a.claimed ? (
+                                            <span className="text-green-600">✓ Claimed</span>
+                                          ) : (
+                                            <span className="text-yellow-600">Pending</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="text-gray-500 text-center py-2 border border-[#808080]">No allocations yet</div>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={fetchHistory}
+                            className="mt-2 px-3 py-1 bg-[#c0c0c0] border-2 text-[10px] hover:bg-[#a0a0a0]"
+                            style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
+                          >
+                            🔄 Refresh
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Footer */}
               <div className="mt-4 pt-2 border-t-2 border-[#808080] text-xs text-gray-500 text-center">
                 <marquee>~ The more you throw in the pit, the bigger your slice ~ I drop coins every 72 hours ~ It's basic human chemistry, kid ~</marquee>
               </div>
             </div>
           </IEBrowser>
+          </div>
+
+          {/* Ad Sidebar */}
+          <div className="hidden lg:block w-48 flex-shrink-0">
+            <div className="bg-[#c0c0c0] border-2 h-full" style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}>
+              <div className="bg-[#000080] text-white text-[10px] px-2 py-1 text-center font-bold">
+                ADVERTISEMENT
+              </div>
+              <div className="p-1 flex flex-col items-center">
+                <a 
+                  href="/" 
+                  className="block hover:opacity-90 transition-opacity"
+                  title="Click here for the 1 weird trick!"
+                >
+                  <img 
+                    src="/danny-devito-ad-banner-website-sideways.png" 
+                    alt="Make your bag BIGGER with this 1 trick!" 
+                    className="w-full h-auto"
+                    style={{ imageRendering: "auto" }}
+                  />
+                </a>
+                <div className="text-[8px] text-gray-500 mt-1 text-center">
+                  [SPONSORED]
+                </div>
+                <div className="mt-2 p-2 bg-[#FFFFCC] border border-[#808080] text-[9px] text-center">
+                  <div className="font-bold text-red-600 animate-pulse">🔥 HOT TIP 🔥</div>
+                  <div className="mt-1">Doctors HATE this one weird trick to grow your bag!</div>
+                </div>
+                <div className="mt-2 text-[8px] text-center text-gray-600">
+                  <div>👆 Click ad 👆</div>
+                  <div>to support Danny</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

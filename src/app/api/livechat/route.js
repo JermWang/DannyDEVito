@@ -1,27 +1,31 @@
-import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-
-import { appendJsonArrayItem, readJsonFile } from "@/lib/fileDb";
-
-const LIVECHAT_FILE = "livechat.json";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req) {
   const url = new URL(req.url);
   const limitRaw = url.searchParams.get("limit");
   const limit = Math.max(1, Math.min(200, Number(limitRaw || 50) || 50));
 
-  const messages = await readJsonFile(LIVECHAT_FILE, []);
-  const list = Array.isArray(messages) ? messages : [];
+  try {
+    const messages = await prisma.chatMessage.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
 
-  const sorted = list.slice().sort((a, b) => {
-    const at = new Date(a?.createdAt || 0).getTime();
-    const bt = new Date(b?.createdAt || 0).getTime();
-    return at - bt;
-  });
+    // Return in chronological order (oldest first)
+    const sorted = messages.reverse().map((m) => ({
+      id: m.id,
+      username: m.nickname || "anon",
+      message: m.message,
+      wallet: m.wallet,
+      createdAt: m.createdAt.toISOString(),
+    }));
 
-  const recent = sorted.slice(-limit);
-
-  return NextResponse.json({ ok: true, messages: recent });
+    return NextResponse.json({ ok: true, messages: sorted });
+  } catch (error) {
+    console.error("Failed to fetch chat messages:", error);
+    return NextResponse.json({ ok: false, error: "database_error" }, { status: 500 });
+  }
 }
 
 export async function POST(req) {
@@ -29,21 +33,33 @@ export async function POST(req) {
 
   const username = typeof body?.username === "string" ? body.username.trim().slice(0, 32) : "anon";
   const message = typeof body?.message === "string" ? body.message.trim().slice(0, 500) : "";
-  const color = typeof body?.color === "string" ? body.color : null;
+  const wallet = typeof body?.wallet === "string" ? body.wallet : null;
 
   if (!message) {
     return NextResponse.json({ ok: false, error: "Empty message" }, { status: 400 });
   }
 
-  const entry = {
-    id: crypto.randomUUID(),
-    username: username || "anon",
-    message,
-    color,
-    createdAt: new Date().toISOString(),
-  };
+  try {
+    const entry = await prisma.chatMessage.create({
+      data: {
+        nickname: username || "anon",
+        message,
+        wallet,
+      },
+    });
 
-  await appendJsonArrayItem(LIVECHAT_FILE, entry);
-
-  return NextResponse.json({ ok: true, entry });
+    return NextResponse.json({
+      ok: true,
+      entry: {
+        id: entry.id,
+        username: entry.nickname,
+        message: entry.message,
+        wallet: entry.wallet,
+        createdAt: entry.createdAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Failed to save chat message:", error);
+    return NextResponse.json({ ok: false, error: "database_error" }, { status: 500 });
+  }
 }
