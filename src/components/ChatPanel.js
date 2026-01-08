@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+
+function makeSessionId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function MessageBubble({ role, content, windowMode = false }) {
   const isUser = role === "user";
@@ -43,6 +48,7 @@ export default function ChatPanel({
   onSent,
   windowMode = false,
 }) {
+  const { publicKey, connected } = useWallet();
   const [messages, setMessages] = useState(() => [
     {
       role: "assistant",
@@ -52,13 +58,25 @@ export default function ChatPanel({
   ]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [sessionId, setSessionId] = useState("");
   const bottomRef = useRef(null);
 
+  const wallet = connected && publicKey ? publicKey.toBase58() : "";
   const canSend = useMemo(() => !sending && text.trim().length > 0, [sending, text]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const existingSession = window.localStorage.getItem("dd_chat_session") || "";
+    const nextSession = existingSession || makeSessionId();
+    if (!existingSession) {
+      window.localStorage.setItem("dd_chat_session", nextSession);
+    }
+    setSessionId(nextSession);
+  }, []);
 
   async function send() {
     if (!canSend) return;
@@ -75,8 +93,8 @@ export default function ChatPanel({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
-          wallet: null,
-          influencesLaunch: false,
+          wallet: wallet || null,
+          sessionId,
         }),
       });
 
@@ -119,30 +137,37 @@ export default function ChatPanel({
             <div ref={bottomRef} />
           </div>
         </div>
-        <div className="p-2 bg-[#c0c0c0] border-t border-[#808080] flex gap-1">
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Talk to the Trash Man..."
-            className="flex-1 px-2 py-1 text-sm border-2 border-[#808080] bg-white text-black"
-            style={{ borderColor: "#808080 #ffffff #ffffff #808080" }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={send}
-            disabled={!canSend}
-            className="px-3 py-1 text-sm bg-[#c0c0c0] border-2 font-bold"
-            style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
-          >
-            Send
-          </button>
+        <div className="p-2 bg-[#c0c0c0] border-t border-[#808080]">
+          {wallet ? (
+            <div className="text-[10px] text-gray-600 mb-1">Logged as holder: <span className="font-mono">{wallet.slice(0,4)}…{wallet.slice(-4)}</span></div>
+          ) : (
+            <div className="text-[10px] text-gray-500 mb-1">Connect wallet to log as holder</div>
+          )}
+          <div className="flex gap-1">
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Talk to the Trash Man..."
+              className="flex-1 px-2 py-1 text-sm border-2 border-[#808080] bg-white text-black"
+              style={{ borderColor: "#808080 #ffffff #ffffff #808080" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={send}
+              disabled={!canSend}
+              className="px-3 py-1 text-sm bg-[#c0c0c0] border-2 font-bold"
+              style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
     );

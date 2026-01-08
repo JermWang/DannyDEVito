@@ -139,6 +139,11 @@ export default function Home() {
             <span className="desktop-icon-label">Staking</span>
           </Link>
 
+          <Link href="/chat-logs" className="desktop-icon">
+            <div className="desktop-icon-img">🗃️</div>
+            <span className="desktop-icon-label">Chat Logs</span>
+          </Link>
+
           <button
             type="button"
             className="desktop-icon"

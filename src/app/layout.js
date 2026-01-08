@@ -14,9 +14,32 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.DannyDaDev.xyz";
+
 export const metadata = {
+  metadataBase: new URL(appUrl),
   title: "Danny DEVito | The Trash Man of Crypto",
-  description: "I'm the Trash Man! I come out, I throw coins all over the ring! Parody agent dropping magnum memecoins every 72 hours. Stakers get the good seats.",
+  description: "The Trash Man of Crypto",
+  openGraph: {
+    title: "Danny DEVito | The Trash Man of Crypto",
+    description: "The Trash Man of Crypto",
+    url: "/",
+    type: "website",
+    images: [
+      {
+        url: "/danny-DEVito-banner.png",
+        width: 1024,
+        height: 256,
+        alt: "Danny DEVito banner",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Danny DEVito | The Trash Man of Crypto",
+    description: "The Trash Man of Crypto",
+    images: ["/danny-DEVito-banner.png"],
+  },
   icons: {
     icon: "/3.png",
   },
