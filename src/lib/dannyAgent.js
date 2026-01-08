@@ -159,3 +159,59 @@ export async function generateTweet(context = "random") {
     return null;
   }
 }
+
+export async function generateLaunchPreviewFromHolderChats({ messages }) {
+  const profile = await loadPersonalityProfile();
+  const systemPrompt = buildSystemPrompt(profile);
+
+  const safeMessages = Array.isArray(messages) ? messages.filter(Boolean).slice(-80) : [];
+  const excerpt = safeMessages.map((m, i) => `${i + 1}. ${String(m).slice(0, 240)}`).join("\n");
+
+  const prompt =
+    `You are preparing the next Pump.fun token launch.\n` +
+    `Use ONLY the vibe and ideas from these verified token-holder chat messages as inspiration.\n` +
+    `Return STRICT JSON only with keys: name, symbol, description, metadataImageUrl.\n` +
+    `Constraints:\n` +
+    `- name: max 32 chars\n` +
+    `- symbol: 2-10 chars, uppercase letters/numbers only (no $)\n` +
+    `- description: max 200 chars\n` +
+    `- metadataImageUrl: optional, must be https URL if present\n\n` +
+    `Messages:\n${excerpt || "(no messages)"}`;
+
+  try {
+    const openai = getOpenAI();
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 250,
+      temperature: 0.9,
+    });
+
+    const raw = String(completion.choices[0]?.message?.content || "").trim();
+    const jsonText = raw.startsWith("{") ? raw : raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+    const parsed = JSON.parse(jsonText);
+
+    const name = String(parsed?.name ?? "").trim();
+    const symbol = String(parsed?.symbol ?? "").trim();
+    const description = String(parsed?.description ?? "").trim();
+    const metadataImageUrl = String(parsed?.metadataImageUrl ?? "").trim();
+
+    return {
+      name,
+      symbol,
+      description,
+      metadataImageUrl: metadataImageUrl || null,
+    };
+  } catch (error) {
+    console.error("Launch preview generation error:", error);
+    return {
+      name: "Danny's Magnum Coin",
+      symbol: "DEVITO",
+      description: "A brand new magnum memecoin cooked up by Danny DEVito.",
+      metadataImageUrl: null,
+    };
+  }
+}

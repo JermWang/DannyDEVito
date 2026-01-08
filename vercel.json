@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/launch",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/tweet",
       "schedule": "0 */6 * * *"
     }

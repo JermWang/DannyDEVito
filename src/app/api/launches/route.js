@@ -1,19 +1,30 @@
-import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 
-import { appendJsonArrayItem, readJsonFile } from "@/lib/fileDb";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const launches = await readJsonFile("launches.json", []);
-  const sorted = Array.isArray(launches)
-    ? launches.slice().sort((a, b) => {
-        const at = new Date(a?.createdAt || 0).getTime();
-        const bt = new Date(b?.createdAt || 0).getTime();
-        return bt - at;
-      })
-    : [];
+  try {
+    const launches = await prisma.launch.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
 
-  return NextResponse.json({ ok: true, launches: sorted });
+    return NextResponse.json({
+      ok: true,
+      launches: launches.map((l) => ({
+        id: l.id,
+        createdAt: l.createdAt.toISOString(),
+        name: l.name,
+        ticker: l.ticker,
+        status: l.status,
+        pumpUrl: l.pumpUrl,
+        mint: l.mint,
+      })),
+    });
+  } catch (e) {
+    console.error("[Launches GET] Error:", e?.message || e);
+    return NextResponse.json({ ok: false, error: "fetch_failed" }, { status: 500 });
+  }
 }
 
 export async function POST(req) {
@@ -29,20 +40,35 @@ export async function POST(req) {
     );
   }
 
-  const launch = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    name,
-    ticker,
-    status: typeof body?.status === "string" ? body.status : "draft",
-    pumpUrl: typeof body?.pumpUrl === "string" ? body.pumpUrl : null,
-    mint: typeof body?.mint === "string" ? body.mint : null,
-    influencedByChatIds: Array.isArray(body?.influencedByChatIds)
-      ? body.influencedByChatIds
-      : [],
-  };
+  try {
+    const status = typeof body?.status === "string" ? body.status : "draft";
+    const pumpUrl = typeof body?.pumpUrl === "string" ? body.pumpUrl : null;
+    const mint = typeof body?.mint === "string" ? body.mint : null;
 
-  await appendJsonArrayItem("launches.json", launch);
+    const launch = await prisma.launch.create({
+      data: {
+        name,
+        ticker,
+        status,
+        pumpUrl,
+        mint,
+      },
+    });
 
-  return NextResponse.json({ ok: true, launch });
+    return NextResponse.json({
+      ok: true,
+      launch: {
+        id: launch.id,
+        createdAt: launch.createdAt.toISOString(),
+        name: launch.name,
+        ticker: launch.ticker,
+        status: launch.status,
+        pumpUrl: launch.pumpUrl,
+        mint: launch.mint,
+      },
+    });
+  } catch (e) {
+    console.error("[Launches POST] Error:", e?.message || e);
+    return NextResponse.json({ ok: false, error: "create_failed" }, { status: 500 });
+  }
 }

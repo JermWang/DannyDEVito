@@ -2,9 +2,48 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { Transaction } from "@solana/web3.js";
 import IEBrowser from "@/components/IEBrowser";
+
+function toBase64(bytes) {
+  if (!bytes) return "";
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
+  let binary = "";
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
+  return btoa(binary);
+}
+
+function fromBase64(base64) {
+  const b64 = String(base64 ?? "").trim();
+  if (!b64) return new Uint8Array();
+  if (typeof Buffer !== "undefined") {
+    return Uint8Array.from(Buffer.from(b64, "base64"));
+  }
+  const binary = atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+function buildStakingAuthMessage({
+  wallet,
+  action,
+  nonce,
+  amount,
+  txSignature,
+  allocationId,
+  unstakeTxSignature,
+  allocationTxSignatures,
+  claimAmount,
+}) {
+  const allocTxs = Array.isArray(allocationTxSignatures) ? allocationTxSignatures.join(",") : allocationTxSignatures;
+  return `Danny DEVito Staking Action\n\nWallet: ${wallet}\nAction: ${action}\nNonce: ${nonce}\nAmount: ${amount ?? ""}\nTx: ${txSignature ?? ""}\nAllocation: ${allocationId ?? ""}\nUnstakeTx: ${unstakeTxSignature ?? ""}\nAllocationTxs: ${allocTxs ?? ""}\nClaimAmount: ${claimAmount ?? ""}`;
+}
 
 function formatTimeLeft(iso) {
   if (!iso) return "—";
@@ -30,11 +69,13 @@ function StatBox({ label, value, highlight = false }) {
 }
 
 export default function StakingPage() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signMessage, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const [wallet, setWallet] = useState("");
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [amount, setAmount] = useState("100");
+  const [txSignature, setTxSignature] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [escrowWallet, setEscrowWallet] = useState(null);
@@ -81,17 +122,104 @@ export default function StakingPage() {
     if (canQuery) refresh();
   }, [wallet]);
 
+  async function signedStakingPost(payload) {
+    if (!connected || !publicKey || !signMessage) {
+      throw new Error("Connect wallet first");
+    }
+
+    const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const action = String(payload?.action ?? "");
+    const messageToSign = buildStakingAuthMessage({
+      wallet,
+      action,
+      nonce,
+      amount: payload?.amount,
+      txSignature: payload?.txSignature,
+      allocationId: payload?.allocationId,
+      unstakeTxSignature: payload?.unstakeTxSignature,
+      allocationTxSignatures: payload?.allocationTxSignatures,
+      claimAmount: payload?.claimAmount,
+    });
+    const messageBytes = new TextEncoder().encode(messageToSign);
+    const signatureBytes = await signMessage(messageBytes);
+    const signature = toBase64(signatureBytes);
+
+    const res = await fetch("/api/staking", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ wallet, nonce, signature, ...payload }),
+    });
+
+    const data = await res.json().catch(() => null);
+    return { res, data };
+  }
+
+  async function claimUnlocked() {
+    if (!canQuery) return;
+    if (!connected || !publicKey) {
+      setMessage({ type: "error", text: "Connect wallet first" });
+      return;
+    }
+    if (!sendTransaction) {
+      setMessage({ type: "error", text: "Wallet does not support sending transactions" });
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { res, data } = await signedStakingPost({ action: "claim_prepare" });
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "claim_prepare_failed");
+      }
+
+      const prepared = data.prepared;
+      const unstakeTxBase64 = prepared?.unstakeTxBase64;
+      const allocationTxsBase64 = Array.isArray(prepared?.allocationTxsBase64) ? prepared.allocationTxsBase64 : [];
+
+      const unstakeTx = Transaction.from(fromBase64(unstakeTxBase64));
+      const unstakeSig = await sendTransaction(unstakeTx, connection);
+      await connection.confirmTransaction(unstakeSig, "confirmed");
+
+      const allocSigs = [];
+      for (const txB64 of allocationTxsBase64) {
+        if (!String(txB64 || "").trim()) continue;
+        const tx = Transaction.from(fromBase64(txB64));
+        const sig = await sendTransaction(tx, connection);
+        await connection.confirmTransaction(sig, "confirmed");
+        allocSigs.push(sig);
+      }
+
+      const finalize = await signedStakingPost({
+        action: "claim_finalize",
+        claimAmount: prepared?.claimAmount,
+        allocationIds: prepared?.allocationIds,
+        unstakeTxSignature: unstakeSig,
+        allocationTxSignatures: allocSigs,
+      });
+
+      if (!finalize.res.ok || !finalize.data?.ok) {
+        throw new Error(finalize.data?.error || "claim_finalize_failed");
+      }
+
+      setSummary(finalize.data?.summary || null);
+      setMessage({ type: "success", text: "Claim completed!" });
+      if (showHistory) {
+        await fetchHistory();
+      }
+    } catch (e) {
+      setMessage({ type: "error", text: e?.message || "Claim failed. Try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function initEscrow() {
     if (!canQuery) return;
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/staking", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ wallet, action: "init_escrow" }),
-      });
-      const data = await res.json();
+      const { data } = await signedStakingPost({ action: "init_escrow" });
       if (data.ok && data.escrowWallet) {
         setEscrowWallet(data.escrowWallet);
         setMessage({ type: "success", text: "Escrow wallet created! Send $DEVITO to stake." });
@@ -108,20 +236,23 @@ export default function StakingPage() {
   async function act(action) {
     if (!canQuery) return;
 
+    if (action === "stake" && !String(txSignature || "").trim()) {
+      setMessage({ type: "error", text: "Paste the deposit transaction signature first." });
+      return;
+    }
+
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/staking", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          wallet,
-          action,
-          amount: Number(amount),
-        }),
-      });
+      const payload = {
+        action,
+        amount: Number(amount),
+      };
+      if (action === "stake") {
+        payload.txSignature = String(txSignature || "").trim();
+      }
 
-      const data = await res.json();
+      const { res, data } = await signedStakingPost(payload);
       setSummary(data?.summary || null);
 
       if (!res.ok && data?.error) {
@@ -132,6 +263,14 @@ export default function StakingPage() {
           insufficient_staked: "You don't have that much staked!",
           no_pending_unlock: "Nothing to claim yet.",
           not_unlocked_yet: "Your tokens aren't unlocked yet. Be patient!",
+          devito_mint_not_configured: "Staking token mint is not configured on the server.",
+          tx_signature_required: "Paste the deposit transaction signature.",
+          tx_already_used: "That transaction signature was already used.",
+          tx_not_found: "Transaction not found yet. Wait for confirmation and try again.",
+          tx_failed: "That transaction failed on-chain.",
+          tx_not_signed_by_wallet: "Deposit tx must be signed by your connected wallet.",
+          deposit_amount_mismatch: "Deposit amount doesn't match what you entered.",
+          deposit_source_mismatch: "Deposit must be from your wallet into your escrow.",
         };
         setMessage({ type: "error", text: errorMessages[data.error] || data.error });
       } else {
@@ -358,6 +497,17 @@ export default function StakingPage() {
                         className="w-32 px-2 py-1 border-2 border-[#808080] font-mono"
                       />
                     </div>
+
+                    <div className="min-w-[240px]">
+                      <label className="text-xs text-gray-600 block mb-1">Deposit Tx Signature</label>
+                      <input
+                        value={txSignature}
+                        onChange={(e) => setTxSignature(e.target.value)}
+                        placeholder="Paste Solana tx signature"
+                        type="text"
+                        className="w-full px-2 py-1 border-2 border-[#808080] font-mono text-xs"
+                      />
+                    </div>
                     
                     <button
                       type="button"
@@ -381,7 +531,7 @@ export default function StakingPage() {
                     
                     <button
                       type="button"
-                      onClick={() => act("claim")}
+                      onClick={claimUnlocked}
                       disabled={!canQuery || busy || !summary?.pendingUnstakeAmount}
                       className="px-6 py-2 bg-green-600 text-white font-bold disabled:opacity-50 hover:bg-green-700"
                       title="Claim unlocked tokens"
@@ -404,19 +554,9 @@ export default function StakingPage() {
                                 ({alloc.tokenAmount.toFixed(2)} tokens @ {(alloc.sharePercent * 100).toFixed(4)}%)
                               </span>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                fetch("/api/staking", {
-                                  method: "POST",
-                                  headers: { "content-type": "application/json" },
-                                  body: JSON.stringify({ wallet, action: "claim_allocation", allocationId: alloc.allocationId }),
-                                }).then(() => refresh());
-                              }}
-                              className="px-3 py-1 bg-green-600 text-white text-xs font-bold hover:bg-green-700"
-                            >
-                              CLAIM
-                            </button>
+                            <div className="text-xs text-gray-600 font-bold">
+                              Locked until unstake
+                            </div>
                           </div>
                         ))}
                       </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateTweet } from "@/lib/dannyAgent";
 import { postTweet, isTwitterConfigured } from "@/lib/twitter";
-import { verifyAdminSignature, buildAdminAuthMessage } from "@/lib/adminAuth";
+import { verifyAdminRequest } from "@/lib/adminAuth";
 
 export async function POST(req) {
   try {
@@ -10,34 +10,33 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: "invalid_body" }, { status: 400 });
     }
 
-    // Check if this is an admin-triggered tweet or a cron job
-    const cronSecret = process.env.CRON_SECRET;
-    const isCronRequest = body?.cronSecret && cronSecret && body.cronSecret === cronSecret;
+    const wallet = String(body?.wallet ?? "").trim();
+    const nonce = String(body?.nonce ?? "").trim();
+    const signature = String(body?.signature ?? "").trim();
 
-    if (!isCronRequest) {
-      // Require admin auth for manual tweets
-      const wallet = String(body?.wallet ?? "").trim();
-      const nonce = String(body?.nonce ?? "").trim();
-      const signature = String(body?.signature ?? "").trim();
+    const context = String(body?.context ?? "random").trim() || "random";
+    const customText = body?.customText;
+    const payload = {
+      context,
+      customText: typeof customText === "string" ? customText.trim().slice(0, 280) : "",
+    };
 
-      if (!wallet || !nonce || !signature) {
-        return NextResponse.json({ ok: false, error: "auth_required" }, { status: 400 });
-      }
+    const authResult = await verifyAdminRequest({
+      wallet,
+      nonce,
+      signatureBase64: signature,
+      action: "tweet",
+      payload,
+    });
 
-      const message = buildAdminAuthMessage(wallet, nonce, "tweet");
-      const authResult = verifyAdminSignature({ wallet, message, signatureBase64: signature });
-      if (!authResult.ok) {
-        return NextResponse.json({ ok: false, error: authResult.error }, { status: 401 });
-      }
+    if (!authResult.ok) {
+      const status = authResult.error === "auth_required" ? 400 : 401;
+      return NextResponse.json({ ok: false, error: authResult.error }, { status });
     }
 
     if (!isTwitterConfigured()) {
       return NextResponse.json({ ok: false, error: "twitter_not_configured" }, { status: 500 });
     }
-
-    // Get tweet context (launch, staking, or random)
-    const context = body?.context || "random";
-    const customText = body?.customText;
 
     let tweetText;
     if (customText && typeof customText === "string" && customText.trim()) {

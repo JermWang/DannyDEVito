@@ -2,9 +2,18 @@ import { NextResponse } from "next/server";
 import { Keypair, PublicKey } from "@solana/web3.js";
 
 import { prisma } from "@/lib/prisma";
-import { verifyAdminSignature, buildAdminAuthMessage } from "@/lib/adminAuth";
+import { verifyAdminRequest } from "@/lib/adminAuth";
 import { getConnection, getSolanaCaip2, privySignAndSendSolanaTransaction, privyGetWallet } from "@/lib/privyServer";
 import { buildUnsignedPumpfunCreateV2Tx } from "@/lib/pumpfun";
+import { calculateStakerTokensFromTotalSupply, createLaunchAllocations } from "@/lib/staking";
+
+const TOTAL_SUPPLY = 1_000_000_000;
+const STAKER_SHARE = 0.05 * 0.02;
+
+function authStatus(error) {
+  if (error === "auth_required") return 400;
+  return 401;
+}
 
 export async function POST(req) {
   try {
@@ -17,14 +26,23 @@ export async function POST(req) {
     const nonce = String(body?.nonce ?? "").trim();
     const signature = String(body?.signature ?? "").trim();
 
-    if (!wallet || !nonce || !signature) {
-      return NextResponse.json({ ok: false, error: "auth_required" }, { status: 400 });
-    }
+    const payload = {
+      name: String(body?.name ?? "").trim(),
+      symbol: String(body?.symbol ?? "").trim(),
+      uri: String(body?.uri ?? "").trim(),
+      spendableSolLamports: String(body?.spendableSolLamports ?? "").trim(),
+    };
 
-    const message = buildAdminAuthMessage(wallet, nonce, "launch");
-    const authResult = verifyAdminSignature({ wallet, message, signatureBase64: signature });
+    const authResult = await verifyAdminRequest({
+      wallet,
+      nonce,
+      signatureBase64: signature,
+      action: "launch",
+      payload,
+    });
+
     if (!authResult.ok) {
-      return NextResponse.json({ ok: false, error: authResult.error }, { status: 401 });
+      return NextResponse.json({ ok: false, error: authResult.error }, { status: authStatus(authResult.error) });
     }
 
     const treasuryWalletId = String(process.env.TREASURY_WALLET_ID ?? "").trim();
@@ -39,10 +57,10 @@ export async function POST(req) {
 
     const treasuryPubkey = new PublicKey(treasuryInfo.address);
 
-    const name = String(body?.name ?? "").trim();
-    const symbol = String(body?.symbol ?? "").trim();
-    const uri = String(body?.uri ?? "").trim();
-    const spendableSolLamports = BigInt(body?.spendableSolLamports ?? 100_000_000);
+    const name = payload.name;
+    const symbol = payload.symbol;
+    const uri = payload.uri;
+    const spendableSolLamports = BigInt(payload.spendableSolLamports || "100000000");
 
     if (!name || name.length > 32) {
       return NextResponse.json({ ok: false, error: "name_invalid" }, { status: 400 });
@@ -89,8 +107,17 @@ export async function POST(req) {
         pumpUrl: `https://pump.fun/coin/${mintKeypair.publicKey.toBase58()}`,
         status: "launched",
         launchedAt: new Date(),
+        totalSupply: TOTAL_SUPPLY,
+        stakerShare: STAKER_SHARE,
       },
     });
+
+    try {
+      const totalTokensForStakers = calculateStakerTokensFromTotalSupply(TOTAL_SUPPLY);
+      await createLaunchAllocations(launch.id, totalTokensForStakers);
+    } catch (e) {
+      console.error("[Admin Launch] Failed to create allocations:", e?.message || e);
+    }
 
     console.log("[Admin Launch] Token launched:", {
       launchId: launch.id,
@@ -113,8 +140,25 @@ export async function POST(req) {
   }
 }
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const wallet = String(req.headers.get("x-admin-wallet") ?? "").trim();
+    const nonce = String(req.headers.get("x-admin-nonce") ?? "").trim();
+    const signature = String(req.headers.get("x-admin-signature") ?? "").trim();
+
+    const authResult = await verifyAdminRequest({
+      wallet,
+      nonce,
+      signatureBase64: signature,
+      action: "launch_get",
+      payload: {},
+      consumeNonce: false,
+    });
+
+    if (!authResult.ok) {
+      return NextResponse.json({ ok: false, error: authResult.error }, { status: authStatus(authResult.error) });
+    }
+
     const launches = await prisma.launch.findMany({
       orderBy: { createdAt: "desc" },
       take: 50,

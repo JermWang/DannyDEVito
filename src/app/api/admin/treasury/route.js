@@ -1,11 +1,33 @@
 import { NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 
-import { verifyAdminSignature, buildAdminAuthMessage } from "@/lib/adminAuth";
-import { getConnection, getSolanaCaip2, privyGetWallet, privyTransferLamports, getWalletBalance } from "@/lib/privyServer";
+import { verifyAdminRequest } from "@/lib/adminAuth";
+import { getSolanaCaip2, privyGetWallet, privyTransferLamports, getWalletBalance } from "@/lib/privyServer";
 
-export async function GET() {
+function authStatus(error) {
+  if (error === "auth_required") return 400;
+  return 401;
+}
+
+export async function GET(req) {
   try {
+    const wallet = String(req.headers.get("x-admin-wallet") ?? "").trim();
+    const nonce = String(req.headers.get("x-admin-nonce") ?? "").trim();
+    const signature = String(req.headers.get("x-admin-signature") ?? "").trim();
+
+    const authResult = await verifyAdminRequest({
+      wallet,
+      nonce,
+      signatureBase64: signature,
+      action: "treasury_get",
+      payload: {},
+      consumeNonce: false,
+    });
+
+    if (!authResult.ok) {
+      return NextResponse.json({ ok: false, error: authResult.error }, { status: authStatus(authResult.error) });
+    }
+
     const treasuryWalletId = String(process.env.TREASURY_WALLET_ID ?? "").trim();
     if (!treasuryWalletId) {
       return NextResponse.json({ ok: false, error: "treasury_not_configured" }, { status: 500 });
@@ -47,14 +69,23 @@ export async function POST(req) {
     const signature = String(body?.signature ?? "").trim();
     const action = String(body?.action ?? "").trim();
 
-    if (!wallet || !nonce || !signature) {
-      return NextResponse.json({ ok: false, error: "auth_required" }, { status: 400 });
+    const payload = { action };
+
+    if (action === "withdraw") {
+      payload.destinationWallet = String(body?.destinationWallet ?? "").trim();
+      payload.amountLamports = Number(body?.amountLamports ?? 0);
     }
 
-    const message = buildAdminAuthMessage(wallet, nonce, `treasury_${action}`);
-    const authResult = verifyAdminSignature({ wallet, message, signatureBase64: signature });
+    const authResult = await verifyAdminRequest({
+      wallet,
+      nonce,
+      signatureBase64: signature,
+      action: `treasury_${action}`,
+      payload,
+    });
+
     if (!authResult.ok) {
-      return NextResponse.json({ ok: false, error: authResult.error }, { status: 401 });
+      return NextResponse.json({ ok: false, error: authResult.error }, { status: authStatus(authResult.error) });
     }
 
     const treasuryWalletId = String(process.env.TREASURY_WALLET_ID ?? "").trim();
@@ -70,8 +101,8 @@ export async function POST(req) {
     const treasuryPubkey = new PublicKey(treasuryInfo.address);
 
     if (action === "withdraw") {
-      const destinationWallet = String(body?.destinationWallet ?? "").trim();
-      const amountLamports = Number(body?.amountLamports ?? 0);
+      const destinationWallet = payload.destinationWallet;
+      const amountLamports = payload.amountLamports;
 
       if (!destinationWallet) {
         return NextResponse.json({ ok: false, error: "destinationWallet_required" }, { status: 400 });

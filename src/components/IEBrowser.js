@@ -5,6 +5,8 @@ import Link from "next/link";
 export default function IEBrowser({ 
   title = "Internet Explorer", 
   url = "http://localhost/",
+  iconSrc = "/3.png",
+  faviconSrc = "/3.png",
   children,
   onBack,
   onForward,
@@ -16,7 +18,7 @@ export default function IEBrowser({
       {/* Title bar */}
       <div className="ie-titlebar">
         <div className="ie-titlebar-left">
-          <img src="/3.png" alt="" className="ie-titlebar-icon" />
+          <img src={iconSrc} alt="" className="ie-titlebar-icon" />
           <span className="ie-titlebar-title">{title} - Microsoft Internet Explorer</span>
         </div>
         <div className="ie-titlebar-buttons">
@@ -85,7 +87,7 @@ export default function IEBrowser({
       <div className="ie-addressbar">
         <span className="ie-addressbar-label">Address</span>
         <div className="ie-addressbar-input">
-          <img src="/3.png" alt="" className="ie-addressbar-favicon" />
+          <img src={faviconSrc} alt="" className="ie-addressbar-favicon" />
           <span className="ie-addressbar-url">{url}</span>
         </div>
         <button className="ie-addressbar-go">Go</button>

@@ -6,6 +6,14 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import IEBrowser from "@/components/IEBrowser";
 
+function formatCountdown(ms) {
+  const v = Math.max(0, Number(ms) || 0);
+  const totalSeconds = Math.floor(v / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  return `~${h}h ${m}m`;
+}
+
 function LaunchCard({ launch }) {
   const statusColors = {
     draft: "bg-[#808080]",
@@ -48,6 +56,7 @@ export default function VaultPage() {
   const [launches, setLaunches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [schedule, setSchedule] = useState(null);
   const [form, setForm] = useState({
     name: "",
     ticker: "",
@@ -72,6 +81,20 @@ export default function VaultPage() {
 
   useEffect(() => {
     refresh();
+  }, []);
+
+  async function refreshSchedule() {
+    try {
+      const res = await fetch("/api/launch-schedule", { cache: "no-store" });
+      const data = await res.json();
+      if (data?.ok) setSchedule(data);
+    } catch {}
+  }
+
+  useEffect(() => {
+    refreshSchedule();
+    const t = setInterval(refreshSchedule, 60_000);
+    return () => clearInterval(t);
   }, []);
 
   async function createDraft(e) {
@@ -100,17 +123,12 @@ export default function VaultPage() {
   }
 
   const nextLaunchTime = useMemo(() => {
-    if (launches.length === 0) return "Soon™";
-    const lastLaunch = launches[0];
-    const lastDate = new Date(lastLaunch.createdAt);
-    const nextDate = new Date(lastDate.getTime() + 72 * 60 * 60 * 1000);
-    const now = new Date();
-    if (nextDate <= now) return "Any moment now...";
-    const diff = nextDate.getTime() - now.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `~${hours}h ${mins}m`;
-  }, [launches]);
+    if (!schedule?.nextLaunchAt) return "Soon™";
+    const nextMs = new Date(schedule.nextLaunchAt).getTime();
+    const now = Date.now();
+    if (nextMs <= now) return "Any moment now...";
+    return formatCountdown(nextMs - now);
+  }, [schedule]);
 
   const stats = useMemo(() => {
     const total = launches.length;
@@ -137,15 +155,12 @@ export default function VaultPage() {
             <div className="bg-black text-[10px] font-bold overflow-hidden whitespace-nowrap">
               <marquee behavior="scroll" direction="left" scrollamount="3" className="py-1">
                 <span className="text-red-500">🚨 YOU ARE THE 1,000,000th VISITOR! 🚨</span>
-                <span className="mx-4 text-yellow-400">⚠️ YOUR COMPUTER HAS 47 VIRUSES ⚠️</span>
                 <span className="mx-4 text-green-400">💰 SINGLE MOMS IN YOUR AREA WANT TO TRADE CRYPTO 💰</span>
                 <span className="mx-4 text-pink-400">🎰 CLICK HERE TO CLAIM FREE $DEVITO 🎰</span>
                 <span className="mx-4 text-cyan-400">🔥 DOCTORS HATE THIS ONE WEIRD TRICK 🔥</span>
                 <span className="mx-4 text-orange-400">📈 $DEVITO TO $1 GUARANTEED* 📈</span>
-                <span className="mx-4 text-purple-400">🥚 EGG TOKEN PRESALE LIVE NOW 🥚</span>
-                <span className="mx-4 text-lime-400">💎 DIAMOND HANDS ONLY 💎</span>
                 <span className="mx-4 text-red-400">🚀 NEXT 1000X GEM FOUND 🚀</span>
-                <span className="mx-4 text-yellow-300">⬇️ DOWNLOAD MORE RAM ⬇️</span>
+                <span className="mx-4 text-yellow-300">⬇️ DOWNLOAD MORE HENTAI ⬇️</span>
               </marquee>
             </div>
 

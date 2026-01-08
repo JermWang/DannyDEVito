@@ -9,6 +9,31 @@ import crypto from "node:crypto";
 
 const TWITTER_API_URL = "https://api.twitter.com/2/tweets";
 
+function getTwitterConfig() {
+  const clientId = String(process.env.X_CLIENT_ID ?? "").trim();
+  const clientSecret = String(process.env.X_CLIENT_SECRET ?? "").trim();
+  const redirectUri = String(process.env.X_REDIRECT_URI ?? "").trim();
+
+  const consumerKey = String(process.env.TWITTER_API_KEY ?? "").trim() || clientId;
+  const consumerSecret = String(process.env.TWITTER_API_SECRET ?? "").trim() || clientSecret;
+
+  const oauth2AccessToken = String(process.env.X_ACCESS_TOKEN ?? "").trim();
+
+  const accessToken = String(process.env.TWITTER_ACCESS_TOKEN ?? "").trim();
+  const accessSecret = String(process.env.TWITTER_ACCESS_SECRET ?? "").trim();
+
+  return {
+    clientId,
+    clientSecret,
+    redirectUri,
+    consumerKey,
+    consumerSecret,
+    oauth2AccessToken,
+    accessToken,
+    accessSecret,
+  };
+}
+
 function percentEncode(str) {
   return encodeURIComponent(str)
     .replace(/!/g, "%21")
@@ -69,32 +94,38 @@ function generateOAuthHeader(method, url, consumerKey, consumerSecret, accessTok
 }
 
 export async function postTweet(text) {
-  const apiKey = process.env.TWITTER_API_KEY;
-  const apiSecret = process.env.TWITTER_API_SECRET;
-  const accessToken = process.env.TWITTER_ACCESS_TOKEN;
-  const accessSecret = process.env.TWITTER_ACCESS_SECRET;
+  const cfg = getTwitterConfig();
 
-  if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
+  const hasOAuth2 = Boolean(cfg.oauth2AccessToken);
+  const hasOAuth1 = Boolean(cfg.consumerKey && cfg.consumerSecret && cfg.accessToken && cfg.accessSecret);
+
+  if (!hasOAuth2 && !hasOAuth1) {
     console.error("Twitter credentials not configured");
     return { ok: false, error: "twitter_not_configured" };
   }
 
   try {
-    const authHeader = generateOAuthHeader(
-      "POST",
-      TWITTER_API_URL,
-      apiKey,
-      apiSecret,
-      accessToken,
-      accessSecret
-    );
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    if (hasOAuth2) {
+      headers.Authorization = `Bearer ${cfg.oauth2AccessToken}`;
+    } else {
+      const authHeader = generateOAuthHeader(
+        "POST",
+        TWITTER_API_URL,
+        cfg.consumerKey,
+        cfg.consumerSecret,
+        cfg.accessToken,
+        cfg.accessSecret
+      );
+      headers.Authorization = authHeader;
+    }
 
     const response = await fetch(TWITTER_API_URL, {
       method: "POST",
-      headers: {
-        Authorization: authHeader,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({ text }),
     });
 
@@ -114,10 +145,8 @@ export async function postTweet(text) {
 }
 
 export function isTwitterConfigured() {
-  return !!(
-    process.env.TWITTER_API_KEY &&
-    process.env.TWITTER_API_SECRET &&
-    process.env.TWITTER_ACCESS_TOKEN &&
-    process.env.TWITTER_ACCESS_SECRET
-  );
+  const cfg = getTwitterConfig();
+  const oauth2 = Boolean(cfg.oauth2AccessToken);
+  const oauth1 = Boolean(cfg.consumerKey && cfg.consumerSecret && cfg.accessToken && cfg.accessSecret);
+  return oauth2 || oauth1;
 }

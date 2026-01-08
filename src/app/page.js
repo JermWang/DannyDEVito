@@ -46,12 +46,19 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [windows, setWindows] = useState({
     wallet: { open: false, minimized: false, zIndex: 8 },
-    agentChat: { open: true, minimized: false, zIndex: 10 },
+    agentChat: { open: false, minimized: false, zIndex: 10 },
     liveChat: { open: false, minimized: false, zIndex: 11 },
+    contract: { open: false, minimized: false, zIndex: 12 },
     memeGen: { open: false, minimized: false, zIndex: 9 },
   });
   const [time, setTime] = useState("");
   const [topZ, setTopZ] = useState(12);
+
+  const [desktopLayout, setDesktopLayout] = useState({
+    contract: { x: 840, y: 60, width: 320, height: 150 },
+    agentChat: { x: 720, y: 230, width: 450, height: 420 },
+    liveChat: { x: 360, y: 230, width: 340, height: 450 },
+  });
 
   useEffect(() => {
     const updateTime = () => {
@@ -62,6 +69,60 @@ export default function Home() {
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      setWindows((prev) => ({
+        ...prev,
+        wallet: { ...prev.wallet, open: false },
+        agentChat: { ...prev.agentChat, open: false },
+        liveChat: { ...prev.liveChat, open: false },
+        contract: { ...prev.contract, open: false },
+        memeGen: { ...prev.memeGen, open: false },
+      }));
+      return;
+    }
+
+    const width = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const margin = 24;
+    const gap = 16;
+
+    const contractW = 320;
+    const contractH = 150;
+    const agentW = 450;
+    const agentH = 420;
+    const liveW = 340;
+    const liveH = 450;
+
+    const contractX = Math.max(margin, width - contractW - margin);
+    const contractY = 60;
+
+    const rowY = contractY + contractH + gap;
+    const twoColFits = width >= margin + liveW + gap + agentW + margin;
+
+    const agentX = Math.max(margin, width - agentW - margin);
+    const liveX = twoColFits
+      ? Math.max(margin, width - margin - agentW - gap - liveW)
+      : agentX;
+
+    const agentY = rowY;
+    const liveY = twoColFits ? rowY : rowY + agentH + gap;
+
+    setDesktopLayout({
+      contract: { x: contractX, y: contractY, width: contractW, height: contractH },
+      agentChat: { x: agentX, y: agentY, width: agentW, height: agentH },
+      liveChat: { x: liveX, y: liveY, width: liveW, height: liveH },
+    });
+
+    setWindows((prev) => ({
+      ...prev,
+      wallet: { ...prev.wallet, open: false, zIndex: 8 },
+      memeGen: { ...prev.memeGen, open: false, zIndex: 9 },
+      liveChat: { ...prev.liveChat, open: true, zIndex: 10 },
+      agentChat: { ...prev.agentChat, open: true, zIndex: 11 },
+      contract: { ...prev.contract, open: true, zIndex: 12 },
+    }));
+  }, [isMobile]);
 
   const bringToFront = useCallback((key) => {
     setTopZ((z) => z + 1);
@@ -185,18 +246,18 @@ export default function Home() {
             <span className="desktop-icon-label">Staking</span>
           </Link>
 
+          <Link href="/docs" className="desktop-icon">
+            <div className="desktop-icon-img">
+              <img src="/docs-icon.svg" alt="" className="w-7 h-7 object-contain" />
+            </div>
+            <span className="desktop-icon-label">Docs</span>
+          </Link>
+
           <button
             type="button"
             className="desktop-icon"
-            onClick={() => {
-              const ca = process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "";
-              if (ca) {
-                navigator.clipboard.writeText(ca);
-                alert("Contract address copied!");
-              } else {
-                alert("Contract address coming soon!");
-              }
-            }}
+            onClick={isMobile ? () => toggleWindow("contract") : undefined}
+            onDoubleClick={!isMobile ? () => toggleWindow("contract") : undefined}
           >
             <div className="desktop-icon-img">🪙</div>
             <span className="desktop-icon-label">CA</span>
@@ -250,8 +311,8 @@ export default function Home() {
           onClose={() => closeWindow("agentChat")}
           onFocus={() => bringToFront("agentChat")}
           zIndex={windows.agentChat.zIndex}
-          defaultPosition={{ x: 80, y: 60 }}
-          defaultSize={{ width: 450, height: 380 }}
+          defaultPosition={{ x: desktopLayout.agentChat.x, y: desktopLayout.agentChat.y }}
+          defaultSize={{ width: desktopLayout.agentChat.width, height: desktopLayout.agentChat.height }}
           minSize={{ width: 320, height: 250 }}
         >
           <div className="win-content-inner p-0 flex flex-col h-full">
@@ -267,12 +328,56 @@ export default function Home() {
           onClose={() => closeWindow("liveChat")}
           onFocus={() => bringToFront("liveChat")}
           zIndex={windows.liveChat.zIndex}
-          defaultPosition={{ x: 560, y: 80 }}
+          defaultPosition={{ x: desktopLayout.liveChat.x, y: desktopLayout.liveChat.y }}
           defaultSize={{ width: 340, height: 450 }}
           minSize={{ width: 280, height: 300 }}
         >
           <div className="win-content-inner p-0 flex flex-col h-full">
             <LiveChat windowMode />
+          </div>
+        </DraggableWindow>
+
+        <DraggableWindow
+          title="Contract Address"
+          icon="🪙"
+          isOpen={windows.contract.open}
+          onClose={() => closeWindow("contract")}
+          onFocus={() => bringToFront("contract")}
+          zIndex={windows.contract.zIndex}
+          defaultPosition={{ x: desktopLayout.contract.x, y: desktopLayout.contract.y }}
+          defaultSize={{ width: desktopLayout.contract.width, height: desktopLayout.contract.height }}
+          minSize={{ width: 260, height: 120 }}
+        >
+          <div className="win-content-inner p-4 flex flex-col gap-3">
+            <div className="text-xs font-semibold">$DEVITO Contract</div>
+            <div className="text-xs font-mono break-all">
+              {process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "Set NEXT_PUBLIC_TOKEN_CONTRACT"}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="win-btn"
+                onClick={() => {
+                  const ca = process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "";
+                  if (!ca) return;
+                  navigator.clipboard.writeText(ca);
+                }}
+                disabled={!process.env.NEXT_PUBLIC_TOKEN_CONTRACT}
+              >
+                Copy
+              </button>
+              <a
+                className="win-btn"
+                href={process.env.NEXT_PUBLIC_TOKEN_CONTRACT ? `https://solscan.io/token/${process.env.NEXT_PUBLIC_TOKEN_CONTRACT}` : "#"}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => {
+                  if (!process.env.NEXT_PUBLIC_TOKEN_CONTRACT) e.preventDefault();
+                }}
+              >
+                Solscan
+              </a>
+            </div>
           </div>
         </DraggableWindow>
 
@@ -330,6 +435,14 @@ export default function Home() {
           >
             <span>🌐</span>
             <span>Live Chat</span>
+          </button>
+          <button
+            type="button"
+            className={`win-taskbar-item ${windows.contract.open ? "active" : ""}`}
+            onClick={() => toggleWindow("contract")}
+          >
+            <span>🪙</span>
+            <span>CA</span>
           </button>
           <button
             type="button"

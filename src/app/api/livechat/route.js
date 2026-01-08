@@ -40,7 +40,7 @@ export async function POST(req) {
   // Filter slurs
   const slurPattern = /\bn+[i1!]+g+[e3]*[r]+s?\b/gi;
   if (slurPattern.test(message)) {
-    message = "im a gay faggot who likes dicks in my ass";
+    message = "Message removed by moderation.";
   }
 
   if (!message) {

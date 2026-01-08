@@ -114,3 +114,47 @@ model DannyChat {
   @@index([sessionId])
   @@index([wallet])
 }
+
+model AdminNonce {
+  id          String   @id @default(cuid())
+  wallet      String
+  nonce       String
+  action      String
+  payloadHash String
+  createdAt   DateTime @default(now())
+
+  @@unique([wallet, nonce])
+  @@index([createdAt])
+}
+
+model LaunchSchedule {
+  id            String   @id @default(cuid())
+  nextLaunchAt  DateTime
+  cadenceHours  Int      @default(72)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ScheduledLaunchDraft {
+  id                String   @id @default(cuid())
+  scheduledAt       DateTime
+  name              String
+  ticker            String
+  description       String?
+  metadataImageUrl  String?
+  metadataUri       String?
+  spendableSolLamports String?
+  generatedAt       DateTime?
+  editedAt          DateTime?
+  launchingAt        DateTime?
+  launchingId        String?
+  launchedAt        DateTime?
+  launchTxSignature String?
+  mint              String?
+  pumpUrl           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([scheduledAt])
+  @@index([scheduledAt])
+}

@@ -1,12 +1,51 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
-function buildAdminAuthMessage(wallet, nonce, action) {
-  return `Danny DEVito Admin Action\n\nWallet: ${wallet}\nAction: ${action}\nNonce: ${nonce}`;
+function toBase64(bytes) {
+  if (!bytes) return "";
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
+  let binary = "";
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
+  return btoa(binary);
+}
+
+function sortKeysDeep(value) {
+  if (Array.isArray(value)) return value.map(sortKeysDeep);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const key of Object.keys(value).sort()) {
+      out[key] = sortKeysDeep(value[key]);
+    }
+    return out;
+  }
+  return value;
+}
+
+function stableStringify(value) {
+  return JSON.stringify(sortKeysDeep(value));
+}
+
+async function sha256Hex(input) {
+  const enc = new TextEncoder().encode(String(input ?? ""));
+  const digest = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function computePayloadHash(payload) {
+  return sha256Hex(stableStringify(payload ?? {}));
+}
+
+function buildAdminAuthMessage(wallet, nonce, action, payloadHash) {
+  return `Danny DEVito Admin Action\n\nWallet: ${wallet}\nAction: ${action}\nNonce: ${nonce}\nPayload: ${payloadHash}`;
 }
 
 function shortAddr(addr) {
@@ -28,6 +67,16 @@ export default function AdminPage() {
   const [launches, setLaunches] = useState([]);
   const [allocations, setAllocations] = useState([]);
 
+  const [schedule, setSchedule] = useState(null);
+  const [draftEdit, setDraftEdit] = useState({
+    draftId: "",
+    name: "",
+    ticker: "",
+    description: "",
+    metadataImageUrl: "",
+    spendableSolLamports: "",
+  });
+
   const [launchForm, setLaunchForm] = useState({
     name: "",
     symbol: "",
@@ -42,35 +91,119 @@ export default function AdminPage() {
 
   const [selectedLaunchId, setSelectedLaunchId] = useState("");
 
+  async function signedFetchJson({ url, action, payload = {}, method = "GET" }) {
+    if (!connected || !signMessage || !wallet) {
+      throw new Error("Connect wallet first");
+    }
+
+    const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const payloadHash = await computePayloadHash(payload);
+    const message = buildAdminAuthMessage(wallet, nonce, action, payloadHash);
+    const messageBytes = new TextEncoder().encode(message);
+    const signatureBytes = await signMessage(messageBytes);
+    const signature = toBase64(signatureBytes);
+
+    const headers = {
+      "content-type": "application/json",
+      "x-admin-wallet": wallet,
+      "x-admin-nonce": nonce,
+      "x-admin-signature": signature,
+    };
+
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: method === "GET" ? undefined : JSON.stringify({ wallet, nonce, signature, ...payload }),
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!data) throw new Error("Invalid response");
+    return data;
+  }
+
   const fetchTreasury = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/treasury");
-      const data = await res.json();
+      const data = await signedFetchJson({ url: "/api/admin/treasury", action: "treasury_get", payload: {}, method: "GET" });
       if (data.ok) setTreasury(data.treasury);
     } catch {}
-  }, []);
+  }, [connected, signMessage, wallet]);
 
   const fetchLaunches = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/launch");
-      const data = await res.json();
+      const data = await signedFetchJson({ url: "/api/admin/launch", action: "launch_get", payload: {}, method: "GET" });
       if (data.ok) setLaunches(data.launches || []);
     } catch {}
-  }, []);
+  }, [connected, signMessage, wallet]);
 
   const fetchAllocations = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/distribute");
-      const data = await res.json();
+      const data = await signedFetchJson({ url: "/api/admin/distribute", action: "distribute_get", payload: {}, method: "GET" });
       if (data.ok) setAllocations(data.allocations || []);
     } catch {}
-  }, []);
+  }, [connected, signMessage, wallet]);
+
+  const fetchSchedule = useCallback(async () => {
+    try {
+      const data = await signedFetchJson({ url: "/api/admin/schedule", action: "schedule_get", payload: {}, method: "GET" });
+      if (data.ok) {
+        setSchedule(data);
+        if (data?.draft?.id) {
+          setDraftEdit({
+            draftId: data.draft.id,
+            name: data.draft.name || "",
+            ticker: data.draft.ticker || "",
+            description: data.draft.description || "",
+            metadataImageUrl: data.draft.metadataImageUrl || "",
+            spendableSolLamports: data.draft.spendableSolLamports || "",
+          });
+        }
+      }
+    } catch {}
+  }, [connected, signMessage, wallet]);
 
   useEffect(() => {
     fetchTreasury();
     fetchLaunches();
     fetchAllocations();
-  }, [fetchTreasury, fetchLaunches, fetchAllocations]);
+    fetchSchedule();
+  }, [fetchTreasury, fetchLaunches, fetchAllocations, fetchSchedule]);
+
+  useEffect(() => {
+    if (!connected) return;
+    const t = setInterval(fetchSchedule, 60_000);
+    return () => clearInterval(t);
+  }, [connected, fetchSchedule]);
+
+  const scheduleCountdown = useMemo(() => {
+    const next = schedule?.nextLaunchAt ? new Date(schedule.nextLaunchAt).getTime() : null;
+    if (!next) return "—";
+    const diff = Math.max(0, next - Date.now());
+    const s = Math.floor(diff / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return `~${h}h ${m}m`;
+  }, [schedule]);
+
+  async function handleSaveDraft() {
+    if (!draftEdit.draftId) {
+      setError("Draft not ready yet");
+      return;
+    }
+
+    const result = await signAndCall("schedule_update", "/api/admin/schedule", {
+      draftId: draftEdit.draftId,
+      name: draftEdit.name,
+      ticker: draftEdit.ticker,
+      description: draftEdit.description,
+      metadataImageUrl: draftEdit.metadataImageUrl,
+      spendableSolLamports: draftEdit.spendableSolLamports,
+    });
+
+    if (result) {
+      setSuccess("Saved scheduled launch draft");
+      fetchSchedule();
+    }
+  }
 
   async function signAndCall(action, endpoint, extraBody = {}) {
     if (!connected || !signMessage || !wallet) {
@@ -84,10 +217,11 @@ export default function AdminPage() {
 
     try {
       const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      const message = buildAdminAuthMessage(wallet, nonce, action);
+      const payloadHash = await computePayloadHash(extraBody);
+      const message = buildAdminAuthMessage(wallet, nonce, action, payloadHash);
       const messageBytes = new TextEncoder().encode(message);
       const signatureBytes = await signMessage(messageBytes);
-      const signature = Buffer.from(signatureBytes).toString("base64");
+      const signature = toBase64(signatureBytes);
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -208,6 +342,96 @@ export default function AdminPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-[#c0c0c0] border-2 border-white border-r-[#808080] border-b-[#808080]">
+            <div className="bg-[#000080] text-white px-3 py-1 font-bold text-sm">Next Scheduled Launch</div>
+            <div className="p-3 text-sm text-black space-y-2">
+              {schedule ? (
+                <>
+                  <div className="text-xs">
+                    <strong>Next launch:</strong> {new Date(schedule.nextLaunchAt).toLocaleString()} ({scheduleCountdown})
+                  </div>
+                  <div className="text-xs">
+                    <strong>Preview ready:</strong> {new Date(schedule.previewAt).toLocaleString()}
+                  </div>
+                  <div className="text-xs">
+                    <strong>Edit opens:</strong> {new Date(schedule.editOpensAt).toLocaleString()}
+                  </div>
+                  {schedule.draft ? (
+                    <div className="border-t border-[#808080] pt-2 mt-2 space-y-2">
+                      <div className="text-xs font-bold">Token Preview</div>
+                      <input
+                        type="text"
+                        value={draftEdit.name}
+                        onChange={(e) => setDraftEdit((d) => ({ ...d, name: e.target.value }))}
+                        className="w-full px-2 py-1 border border-[#808080] bg-white text-black text-xs"
+                        disabled={!schedule.canEdit}
+                        placeholder="Name"
+                      />
+                      <input
+                        type="text"
+                        value={draftEdit.ticker}
+                        onChange={(e) => setDraftEdit((d) => ({ ...d, ticker: e.target.value }))}
+                        className="w-full px-2 py-1 border border-[#808080] bg-white text-black text-xs"
+                        disabled={!schedule.canEdit}
+                        placeholder="Ticker"
+                      />
+                      <textarea
+                        value={draftEdit.description}
+                        onChange={(e) => setDraftEdit((d) => ({ ...d, description: e.target.value }))}
+                        className="w-full px-2 py-1 border border-[#808080] bg-white text-black text-xs"
+                        disabled={!schedule.canEdit}
+                        placeholder="Description"
+                        rows={3}
+                      />
+                      <input
+                        type="text"
+                        value={draftEdit.metadataImageUrl}
+                        onChange={(e) => setDraftEdit((d) => ({ ...d, metadataImageUrl: e.target.value }))}
+                        className="w-full px-2 py-1 border border-[#808080] bg-white text-black text-xs"
+                        disabled={!schedule.canEdit}
+                        placeholder="Image URL (optional)"
+                      />
+                      <input
+                        type="number"
+                        value={draftEdit.spendableSolLamports}
+                        onChange={(e) => setDraftEdit((d) => ({ ...d, spendableSolLamports: e.target.value }))}
+                        className="w-full px-2 py-1 border border-[#808080] bg-white text-black text-xs"
+                        disabled={!schedule.canEdit}
+                        placeholder="Initial buy (lamports, optional)"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleSaveDraft}
+                          disabled={loading || !connected || !schedule.canEdit}
+                          className="px-4 py-1 bg-[#c0c0c0] border-2 text-xs font-bold text-black disabled:opacity-50"
+                          style={{ borderColor: "#ffffff #808080 #808080 #ffffff" }}
+                        >
+                          {loading ? "Saving..." : "Save Preview"}
+                        </button>
+                        {schedule?.draft?.metadataUri ? (
+                          <a href={schedule.draft.metadataUri} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline">
+                            Metadata
+                          </a>
+                        ) : null}
+                      </div>
+                      {!schedule.canEdit ? (
+                        <div className="text-[10px] text-gray-600">
+                          Preview is visible now. Editing unlocks 45 minutes before launch.
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-600">
+                      Preview will auto-generate 60 minutes before launch.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-gray-600">Loading schedule...</div>
+              )}
+            </div>
+          </div>
+
           <div className="bg-[#c0c0c0] border-2 border-white border-r-[#808080] border-b-[#808080]">
             <div className="bg-[#000080] text-white px-3 py-1 font-bold text-sm">Treasury</div>
             <div className="p-3 text-sm text-black">

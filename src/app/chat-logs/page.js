@@ -6,6 +6,17 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import IEBrowser from "@/components/IEBrowser";
 
+function toBase64(bytes) {
+  if (!bytes) return "";
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
+  let binary = "";
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
+  return btoa(binary);
+}
+
 function shortAddr(addr) {
   if (!addr) return "—";
   const s = String(addr);
@@ -40,7 +51,7 @@ export default function ChatLogsPage() {
       const message = buildAuthMessage(wallet, nonce);
       const messageBytes = new TextEncoder().encode(message);
       const signatureBytes = await signMessage(messageBytes);
-      const signature = Buffer.from(signatureBytes).toString("base64");
+      const signature = toBase64(signatureBytes);
       const auth = { wallet, nonce, signature };
       setAuthData(auth);
       return auth;
