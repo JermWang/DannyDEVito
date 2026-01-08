@@ -19,25 +19,25 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.DannyDaDev.xyz";
 export const metadata = {
   metadataBase: new URL(appUrl),
   title: "Danny DEVito | The Trash Man of Crypto",
-  description: "The Trash Man of Crypto",
+  description: "I lost all my money in a ponzi scheme Charlie, IM BROKE!",
   openGraph: {
     title: "Danny DEVito | The Trash Man of Crypto",
-    description: "The Trash Man of Crypto",
+    description: "I lost all my money in a ponzi scheme Charlie, IM BROKE!",
     url: "/",
     type: "website",
     images: [
       {
         url: "/danny-DEVito-banner.png",
-        width: 1024,
-        height: 256,
-        alt: "Danny DEVito banner",
+        width: 1200,
+        height: 630,
+        alt: "Danny DEVito",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Danny DEVito | The Trash Man of Crypto",
-    description: "The Trash Man of Crypto",
+    description: "I lost all my money in a ponzi scheme Charlie, IM BROKE!",
     images: ["/danny-DEVito-banner.png"],
   },
   icons: {
