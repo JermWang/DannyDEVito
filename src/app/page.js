@@ -115,9 +115,9 @@ export default function Home() {
       ...prev,
       wallet: { ...prev.wallet, open: false, zIndex: 8 },
       memeGen: { ...prev.memeGen, open: false, zIndex: 9 },
-      liveChat: { ...prev.liveChat, open: true, zIndex: 10 },
-      agentChat: { ...prev.agentChat, open: true, zIndex: 11 },
-      contract: { ...prev.contract, open: true, zIndex: 12 },
+      liveChat: { ...prev.liveChat, open: false, zIndex: 10 },
+      agentChat: { ...prev.agentChat, open: false, zIndex: 11 },
+      contract: { ...prev.contract, open: false, zIndex: 12 },
     }));
   }, [isMobile]);
 
