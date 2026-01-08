@@ -201,9 +201,9 @@ export default function Home() {
             onDoubleClick={!isMobile ? () => toggleWindow("memeGen") : undefined}
           >
             <div className="desktop-icon-img">
-              <img src="/danny-decheeto.png" alt="" className="w-8 h-8 object-contain" />
+              <img src="/danny-glocked-up.png" alt="" className="w-8 h-8 object-contain" />
             </div>
-            <span className="desktop-icon-label">Meme Gen</span>
+            <span className="desktop-icon-label">Meme Generator</span>
           </button>
         </div>
 
