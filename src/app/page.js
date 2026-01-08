@@ -59,8 +59,8 @@ export default function Home() {
 
   const [desktopLayout, setDesktopLayout] = useState({
     contract: { x: 860, y: 24, width: 240, height: 110 },
-    agentChat: { x: 820, y: 260, width: 320, height: 320 },
-    liveChat: { x: 24, y: 24, width: 300, height: 380 },
+    agentChat: { x: 820, y: 24, width: 320, height: 320 },
+    liveChat: { x: 820, y: 360, width: 320, height: 300 },
   });
 
   useEffect(() => {
@@ -94,17 +94,17 @@ export default function Home() {
     const contractH = 110;
     const agentW = 320;
     const agentH = 320;
-    const liveW = 300;
-    const liveH = 380;
-
-    const contractX = Math.max(margin, width - contractW - margin);
-    const contractY = 24;
-
-    const liveX = margin;
-    const liveY = 24;
+    const liveW = 320;
+    const liveH = 300;
 
     const agentX = Math.max(margin, width - agentW - margin);
-    const agentY = Math.max(contractY + contractH + gap, 260);
+    const agentY = 24;
+
+    const liveX = agentX;
+    const liveY = agentY + agentH + gap;
+
+    const contractX = Math.max(margin, agentX - contractW - gap);
+    const contractY = 24;
 
     setDesktopLayout({
       contract: { x: contractX, y: contractY, width: contractW, height: contractH },
@@ -116,8 +116,8 @@ export default function Home() {
       ...prev,
       wallet: { ...prev.wallet, open: false, zIndex: 8 },
       memeGen: { ...prev.memeGen, open: false, zIndex: 9 },
-      liveChat: { ...prev.liveChat, open: false, zIndex: 10 },
-      agentChat: { ...prev.agentChat, open: false, zIndex: 11 },
+      liveChat: { ...prev.liveChat, open: true, zIndex: 10 },
+      agentChat: { ...prev.agentChat, open: true, zIndex: 11 },
       contract: { ...prev.contract, open: true, zIndex: 12 },
     }));
   }, [isMobile]);
