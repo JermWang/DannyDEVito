@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import IEBrowser from "@/components/IEBrowser";
 
 function LaunchCard({ launch }) {
@@ -42,6 +44,7 @@ function LaunchCard({ launch }) {
 }
 
 export default function VaultPage() {
+  const { connected } = useWallet();
   const [launches, setLaunches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -134,10 +137,13 @@ export default function VaultPage() {
             <div className="p-4 font-sans text-sm text-black bg-white">
               {/* Page header */}
               <div className="border-b-2 border-[#D35400] pb-2 mb-4">
-                <h1 className="text-2xl font-bold text-[#D35400] flex items-center gap-2">
-                  <img src="/DEVito.png" alt="" className="h-8" />
-                  The Vault
-                </h1>
+                <div className="flex items-center justify-between">
+                  <h1 className="text-2xl font-bold text-[#D35400] flex items-center gap-2">
+                    <img src="/DEVito.png" alt="" className="h-8" />
+                    The Vault
+                  </h1>
+                  <WalletMultiButton className="!bg-[#D35400] !h-7 !text-xs" />
+                </div>
                 <p className="text-xs text-gray-600 mt-1">
                   Where I keep the goods ~ every 72 hours I crawl outta here with a new coin
                 </p>

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import IEBrowser from "@/components/IEBrowser";
 
 function formatTimeLeft(iso) {
@@ -28,6 +30,7 @@ function StatBox({ label, value, highlight = false }) {
 }
 
 export default function StakingPage() {
+  const { publicKey, connected } = useWallet();
   const [wallet, setWallet] = useState("");
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -37,6 +40,12 @@ export default function StakingPage() {
   const [escrowWallet, setEscrowWallet] = useState(null);
   const [history, setHistory] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    if (connected && publicKey) {
+      setWallet(publicKey.toBase58());
+    }
+  }, [connected, publicKey]);
 
   const canQuery = useMemo(() => wallet.trim().length > 10, [wallet]);
   
@@ -190,8 +199,9 @@ export default function StakingPage() {
 
               {/* Wallet connection */}
               <div className="border-2 border-[#808080] mb-4">
-                <div className="bg-[#000080] text-white px-3 py-1 font-bold text-sm">
-                  Show Me Your Wallet
+                <div className="bg-[#000080] text-white px-3 py-1 font-bold text-sm flex items-center justify-between">
+                  <span>Show Me Your Wallet</span>
+                  <WalletMultiButton className="!bg-[#000060] !h-6 !text-xs !py-0 !px-2" />
                 </div>
                 <div className="bg-white p-3">
                   <div className="flex gap-2">
@@ -211,6 +221,9 @@ export default function StakingPage() {
                       {loading ? "Loading..." : "Load"}
                     </button>
                   </div>
+                  {connected && (
+                    <div className="text-xs text-green-600 mt-1">✅ Wallet connected - address auto-filled</div>
+                  )}
                   {!canQuery && wallet.length > 0 && (
                     <div className="text-xs text-red-600 mt-1">⚠️ Enter a valid wallet address (min 10 characters)</div>
                   )}
