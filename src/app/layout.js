@@ -50,6 +50,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full">
+      <head>
+        <link rel="icon" href="/danny-DEVito-pfp.png" type="image/png" />
+        <link rel="shortcut icon" href="/danny-DEVito-pfp.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/danny-DEVito-pfp.png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} h-full bg-[var(--tw-bg)] text-[var(--tw-text)] antialiased`}
       >
