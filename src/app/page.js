@@ -185,6 +185,23 @@ export default function Home() {
             <span className="desktop-icon-label">Staking</span>
           </Link>
 
+          <button
+            type="button"
+            className="desktop-icon"
+            onClick={() => {
+              const ca = process.env.NEXT_PUBLIC_TOKEN_CONTRACT || "";
+              if (ca) {
+                navigator.clipboard.writeText(ca);
+                alert("Contract address copied!");
+              } else {
+                alert("Contract address coming soon!");
+              }
+            }}
+          >
+            <div className="desktop-icon-img">🪙</div>
+            <span className="desktop-icon-label">CA</span>
+          </button>
+
           <Link href="/chat-logs" className="desktop-icon">
             <div className="desktop-icon-img">🗃️</div>
             <span className="desktop-icon-label">Chat Logs</span>
