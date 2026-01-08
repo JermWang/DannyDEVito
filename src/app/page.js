@@ -196,13 +196,10 @@ export default function Home() {
           </button>
 
           <a
-            href={process.env.NEXT_PUBLIC_TWITTER_URL || "#"}
+            href="https://x.com/dannydadevxyz"
             target="_blank"
             rel="noreferrer"
             className="desktop-icon"
-            onDoubleClick={(e) => {
-              if (!process.env.NEXT_PUBLIC_TWITTER_URL) e.preventDefault();
-            }}
           >
             <div className="desktop-icon-img">
               <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white">

@@ -205,7 +205,7 @@ function NavLink({ href, label, icon: Icon }) {
 }
 
 export default function SiteHeader() {
-  const twitterUrl = process.env.NEXT_PUBLIC_TWITTER_URL || "";
+  const twitterUrl = "https://x.com/dannydadevxyz";
   const telegramUrl = process.env.NEXT_PUBLIC_TELEGRAM_URL || "";
 
   return (
